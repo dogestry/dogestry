@@ -5,6 +5,7 @@ require 'tapp'
 require 'pathname'
 require 'fileutils'
 
+HERE = File.expand_path("..", __FILE__)
 
 @image = ARGV.shift
 
@@ -25,7 +26,12 @@ def prepare_work
 end
 
 
+# this could be: local, s3, http etc
+def sync
+end
 
-prepare_work
-system("prepare.rb #{@work} #{@image}"
+
+
+#prepare_work
+#system("prepare.rb #{@work} #{@image}"
 sync
