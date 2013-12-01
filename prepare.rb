@@ -1,20 +1,32 @@
-require 'rubygems'
-require 'bundler/setup'
+#!/usr/bin/env ruby
+
+require File.expand_path("../lib/dogestry", __FILE__)
 
 require 'tapp'
 require 'pathname'
 require 'fileutils'
 require 'yajl'
 
+include Dogestry::Sh
+
 @work = Pathname(ARGV.shift).expand_path
 @image = ARGV.shift
 
-def save_image
-  #system("sudo docker save #{@image} | tar xf - --no-same-permissions".taputs)
+
+
+def save_image_tar
+  FileUtils.rm_rf @work
+  @work.mkpath
+
+  Dir.chdir(@work) do
+    sh!("sudo docker save #{@image} | tar xf -".taputs)
+    sh!("find . -type d -exec chmod 0700 {} \\;")
+    sh!("find . -type f -exec chmod 0600 {} \\;")
+  end
 end
 
 
-def handle_images
+def move_images
   images = @work.join('images')
 
   # put images in place
@@ -23,14 +35,12 @@ def handle_images
   paths = Pathname.glob(@work+'*').select {|path|
     path.directory? && path.basename.to_s[/^[A-Fa-f0-9]{40}/]
   }.tapp.each {|path|
-    path.chmod 0700
-    system("chmod 0600 #{path+'*'}")
-    FileUtils.mv path, images
+    FileUtils.mv path.to_s, (images + path.basename).to_s
   }
 end
 
 
-def handle_repos
+def unroll_repositories
   repositories = @work.join('repositories')
   repositories_json = @work.join('repositories.json')
 
@@ -65,6 +75,6 @@ def handle_repos
 end
 
 
-save_image
-handle_images
-handle_repos
+save_image_tar
+move_images
+unroll_repositories
