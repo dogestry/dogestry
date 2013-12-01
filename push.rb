@@ -1,37 +1,29 @@
-require 'rubygems'
-require 'bundler/setup'
+#!/usr/bin/env ruby
+
+require File.expand_path("../lib/dogestry", __FILE__)
 
 require 'tapp'
 require 'pathname'
 require 'fileutils'
 
-HERE = File.expand_path("..", __FILE__)
-
 @image = ARGV.shift
 
-def prepare_work
-  @work = Pathname("/tmp/dogestry/work").expand_path.tapp
+include Dogestry::Sh
 
-  #FileUtils.rm_rf work
-
-  @work.mkpath
-
-  Dir.chdir(@work)
-
-  Dir.pwd.tapp
-
-  # XXX rm at exit
-  #at_exit {
-  #}
-end
-
+@repo = Pathname("/tmp/dogestry/repo").expand_path.tapp
+@work = Pathname("/tmp/dogestry/work").expand_path.tapp
 
 # this could be: local, s3, http etc
 def sync
+  local_sync
 end
 
 
+def local_sync
+  @repo.mkpath
+  sh!("rsync -av #{@work}/ #{@repo}/")
+end
 
-#prepare_work
-#system("prepare.rb #{@work} #{@image}"
+
+sh!("./prepare.rb #{@work} #{@image}")
 sync
