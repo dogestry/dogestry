@@ -25,19 +25,21 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 		return fmt.Errorf("Error: IMAGE and REMOTE not specified")
   }
 
+  fmt.Println("pushing")
   image := cmd.Arg(0)
   remoteDef := cmd.Arg(1)
 
   imageRoot := filepath.Join(cli.TempDir(), image)
 
-  //if err := os.MkdirAll(imageRoot, os.ModeDir | 0700); err != nil {
-    //log.Fatal(err)
-  //}
+  if err := os.MkdirAll(imageRoot, os.ModeDir | 0700); err != nil {
+    return err
+  }
 
-  //if err := cli.prepareImage(image, imageRoot); err != nil {
-    //return err
-  //}
+  if err := cli.prepareImage(image, imageRoot); err != nil {
+    return err
+  }
 
+  fmt.Println("pushing")
   if err := remote.Push(remoteDef, image, imageRoot); err != nil {
     return err
   }
