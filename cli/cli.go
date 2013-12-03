@@ -1,15 +1,16 @@
 package cli
 
 import (
-  "dogestry/client"
-  "fmt"
-  "flag"
-  "io"
-  "io/ioutil"
-  "log"
-  "os"
-  "reflect"
-  "strings"
+	"dogestry/client"
+	"flag"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
 )
 
 // snatched from docker
@@ -24,7 +25,7 @@ func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
 
 func ParseCommands(client *client.Client, args ...string) error {
 	cli := NewDogestryCli(client)
-  defer cli.Cleanup()
+	defer cli.Cleanup()
 
 	if len(args) > 0 {
 		method, exists := cli.getMethod(args[0])
@@ -37,7 +38,6 @@ func ParseCommands(client *client.Client, args ...string) error {
 	return cli.CmdHelp(args...)
 }
 
-
 func (cli *DogestryCli) CmdHelp(args ...string) error {
 	if len(args) > 0 {
 		method, exists := cli.getMethod(args[0])
@@ -49,10 +49,9 @@ func (cli *DogestryCli) CmdHelp(args ...string) error {
 		}
 	}
 
-  fmt.Println("you are beyond help", args)
-  return nil
+	fmt.Println("you are beyond help", args)
+	return nil
 }
-
 
 func (cli *DogestryCli) Subcmd(name, signature, description string) *flag.FlagSet {
 	flags := flag.NewFlagSet(name, flag.ContinueOnError)
@@ -64,40 +63,46 @@ func (cli *DogestryCli) Subcmd(name, signature, description string) *flag.FlagSe
 	return flags
 }
 
-
 func (cli *DogestryCli) TempDir() string {
-  if cli.tempDir == "" {
-    if tempDir,err := ioutil.TempDir("","dogestry"); err != nil {
-      log.Fatal(err)
-    } else {
-      cli.tempDir = tempDir
-    }
-  }
+	if cli.tempDir == "" {
+		if tempDir, err := ioutil.TempDir("", "dogestry"); err != nil {
+			log.Fatal(err)
+		} else {
+			cli.tempDir = tempDir
+		}
+	}
 
-  return cli.tempDir
+	return cli.tempDir
 }
 
+func (cli *DogestryCli) WorkDir(suffix string) (string, error) {
+	path := filepath.Join(cli.TempDir(), suffix)
+
+	if err := os.MkdirAll(path, os.ModeDir|0700); err != nil {
+		return "", err
+	}
+
+	return path, nil
+}
 
 func (cli *DogestryCli) Cleanup() {
-  fmt.Println("cleaning up", cli.tempDir)
-  if cli.tempDir != "" {
-    if err := os.RemoveAll(cli.tempDir); err != nil {
-      log.Println(err)
-    }
-  }
+	fmt.Println("cleaning up", cli.tempDir)
+	if cli.tempDir != "" {
+		if err := os.RemoveAll(cli.tempDir); err != nil {
+			log.Println(err)
+		}
+	}
 }
-
 
 func NewDogestryCli(client *client.Client) *DogestryCli {
-  return &DogestryCli{
-    client: *client,
-    err: os.Stderr,
-  }
+	return &DogestryCli{
+		client: *client,
+		err:    os.Stderr,
+	}
 }
 
-
 type DogestryCli struct {
-	client     client.Client
-  err        io.Writer
-  tempDir    string
+	client  client.Client
+	err     io.Writer
+	tempDir string
 }
