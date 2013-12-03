@@ -51,10 +51,11 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 func (cli *DogestryCli) prepareImage(image, root string) error {
   reader,writer := io.Pipe()
   defer writer.Close()
+  defer reader.Close()
 
   tarball := tar.NewReader(reader)
 
-  done := make(chan bool)
+  errch := make(chan error)
 
   go func() {
     // consume the tar
@@ -67,36 +68,44 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
         break
       }
       if err != nil {
-        log.Fatalln(err)
+        errch <- err
+        return
       }
 
       if err := cli.processTarEntry(root, header, tarball); err != nil {
-        log.Fatalln(err)
+        errch <- err
+        return
       }
     }
     log.Println("tar done")
 
     // donno... read a bit more?
 		if _, err := ioutil.ReadAll(reader); err != nil {
-      log.Fatal(err)
+      errch <- err
+      return
     }
 
-    done <- true
+    errch <- nil
   }()
 
 
   log.Println("making req")
   if err := cli.client.GetImageTarball(image, writer); err != nil {
     fmt.Println("oops", writer)
-    log.Fatal(err)
+    // this should stop the tar reader
+    writer.Close()
+    <-errch
+    return err
   }
-
-  log.Println("req done")
 
   writer.Close()
 
+  log.Println("req done")
+
   // wait for the tar reader
-  <-done
+  if err := <-errch; err != nil {
+    return err
+  }
   log.Println("ok")
 
   return nil
