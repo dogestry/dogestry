@@ -8,6 +8,7 @@ import (
 
 type Remote interface {
 	Push() error
+	ResolveImageName(image string) (string, error)
 }
 
 type RemoteSpec struct {
@@ -22,9 +23,27 @@ var (
 )
 
 func Push(remote, image, imageRoot string) error {
-	remoteUrl, err := normaliseURL(remote)
+	r, err := findRemoteImpl(remote, image, imageRoot)
 	if err != nil {
 		return err
+	}
+
+	return r.Push()
+}
+
+func ResolveImageName(remote, image string) (string, error) {
+	r, err := findRemoteImpl(remote, image, "")
+	if err != nil {
+		return "", err
+	}
+
+	return r.ResolveImageName(image)
+}
+
+func findRemoteImpl(remote, image, imageRoot string) (Remote, error) {
+	remoteUrl, err := normaliseURL(remote)
+	if err != nil {
+		return nil, err
 	}
 
 	spec := RemoteSpec{
@@ -33,15 +52,6 @@ func Push(remote, image, imageRoot string) error {
 		imageRoot: imageRoot,
 	}
 
-	remoteImpl, err := findRemoteImpl(spec)
-	if err != nil {
-		return err
-	}
-
-	return remoteImpl.Push()
-}
-
-func findRemoteImpl(spec RemoteSpec) (Remote, error) {
 	switch spec.url.Scheme {
 	case "rsync":
 		return NewRsyncRemote(spec)
