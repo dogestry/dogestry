@@ -1,20 +1,16 @@
 package remote
 
 import (
+	"dogestry/client"
 	"errors"
 	"fmt"
 	"net/url"
 )
 
 type Remote interface {
-	Push() error
-	ResolveImageName(image string) (string, error)
-}
-
-type RemoteSpec struct {
-	url       url.URL
-	image     string
-	imageRoot string
+	Push(image, imageRoot string) error
+	ResolveImageNameToId(image string) (string, error)
+	WalkImages(id string, walker func(image client.Image) error) error
 }
 
 var (
@@ -22,41 +18,17 @@ var (
 	ErrInvalidRemote = errors.New("Invalid endpoint")
 )
 
-func Push(remote, image, imageRoot string) error {
-	r, err := findRemoteImpl(remote, image, imageRoot)
-	if err != nil {
-		return err
-	}
-
-	return r.Push()
-}
-
-func ResolveImageName(remote, image string) (string, error) {
-	r, err := findRemoteImpl(remote, image, "")
-	if err != nil {
-		return "", err
-	}
-
-	return r.ResolveImageName(image)
-}
-
-func findRemoteImpl(remote, image, imageRoot string) (Remote, error) {
+func NewRemote(remote string) (Remote, error) {
 	remoteUrl, err := normaliseURL(remote)
 	if err != nil {
 		return nil, err
 	}
 
-	spec := RemoteSpec{
-		url:       *remoteUrl,
-		image:     image,
-		imageRoot: imageRoot,
-	}
-
-	switch spec.url.Scheme {
+	switch remoteUrl.Scheme {
 	case "rsync":
-		return NewRsyncRemote(spec)
+		return NewRsyncRemote(*remoteUrl)
 	default:
-		return nil, fmt.Errorf("unknown remote type %s", spec.url.Scheme)
+		return nil, fmt.Errorf("unknown remote type %s", remoteUrl.Scheme)
 	}
 }
 

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"dogestry/client"
 	"dogestry/remote"
 	"fmt"
 )
@@ -24,23 +25,32 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 	//if err != nil {
 	//return err
 	//}
+	remote, err := remote.NewRemote(remoteDef)
+	if err != nil {
+		return err
+	}
 
-	id, err := remote.ResolveImageName(remoteDef, image)
+	id, err := remote.ResolveImageNameToId(image)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("id", id)
 
-	//remote.WalkImages(func(image docker.Image) error {
-	//})
+	// TODO determine lowest missing image from docker
+	remote.WalkImages(id, func(image client.Image) error {
+		fmt.Println("image", image.ID)
 
-	imageJson, err := cli.client.InspectImage(image)
-	if err != nil {
-		return err
-	}
+		imageJson, err := cli.client.InspectImage(id)
+		if err != nil {
+			return err
+		}
+		fmt.Println("  json", imageJson)
+		return nil
+	})
 
-	fmt.Println("img", imageJson)
+	// TODO assemble tarball into imageRoot
+	// TODO docker load
 
 	return nil
 }

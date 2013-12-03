@@ -29,10 +29,13 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 	fmt.Println("pushing")
 	image := cmd.Arg(0)
 	remoteDef := cmd.Arg(1)
-
 	imageRoot := filepath.Join(cli.TempDir(), image)
-
 	if err := os.MkdirAll(imageRoot, os.ModeDir|0700); err != nil {
+		return err
+	}
+
+	remote, err := remote.NewRemote(remoteDef)
+	if err != nil {
 		return err
 	}
 
@@ -41,7 +44,7 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 	}
 
 	fmt.Println("pushing")
-	if err := remote.Push(remoteDef, image, imageRoot); err != nil {
+	if err := remote.Push(image, imageRoot); err != nil {
 		return err
 	}
 
