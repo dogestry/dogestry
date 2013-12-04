@@ -137,11 +137,11 @@ func (remote *RsyncRemote) ImageMetadata(id string) (client.Image, error) {
 
 // TODO factor this out
 func (remote *RsyncRemote) rsyncTo(src, dst string) error {
-	return rsync(src+"/", remote.RemotePath(dst)+"/")
+	return remote.rsync(src+"/", remote.RemotePath(dst)+"/")
 }
 
 func (remote *RsyncRemote) rsyncFrom(src, dst string) error {
-	return rsync(remote.RemotePath(src)+"/", dst+"/")
+	return remote.rsync(remote.RemotePath(src)+"/", dst+"/")
 }
 
 func (remote *RsyncRemote) rsync(src, dst string) error {
