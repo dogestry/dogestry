@@ -13,6 +13,8 @@ import (
 	"strings"
 )
 
+
+
 type RsyncRemote struct {
 	Url url.URL
 }
@@ -29,6 +31,7 @@ func (remote *RsyncRemote) Desc() string {
 	return remote.Url.String()
 }
 
+// 
 func (remote *RsyncRemote) Push(image, imageRoot string) error {
 	log.Println("pushing rsync", remote.Url.Path)
 
@@ -45,11 +48,28 @@ func (remote *RsyncRemote) Push(image, imageRoot string) error {
 	return nil
 }
 
+// pull image into imageRoot
+func (remote *RsyncRemote) PullImageId(id, imageRoot string) error {
+  log.Println("pushing rsync", remote.Url.Path)
+
+	src := remote.imagePath(id) + "/"
+	dst := filepath.Join(filepath.Clean(imageRoot), id) + "/"
+
+	log.Println("rsync", "-av", src, dst)
+	out, err := exec.Command("rsync", "-av", src, dst).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("rsync failed: %s\noutput: %s", err, string(out))
+	}
+	log.Println(string(out))
+
+	return nil
+}
+
 func (remote *RsyncRemote) ResolveImageNameToId(image string) (string, error) {
 	fmt.Println("hi resolving")
 
 	// first, try the repos
-	repoName, repoTag := normaliseImageName(image)
+	repoName, repoTag := NormaliseImageName(image)
 	if id, err := remote.ParseTag(repoName, repoTag); err != nil {
 		return "", err
 	} else if id != "" {
@@ -79,13 +99,25 @@ func (remote *RsyncRemote) ResolveImageNameToId(image string) (string, error) {
 	return "", fmt.Errorf("no image '%s' found on %s", image, remote.Desc())
 }
 
-func (remote *RsyncRemote) WalkImages(id string, walker func(image client.Image) error) error {
+
+
+func (remote *RsyncRemote) WalkImages(id string, walker ImageWalkFn) error {
+  if id == "" {
+    return nil
+  }
+
 	img, err := remote.ImageMetadata(id)
 	// image wasn't found
 	if err != nil {
-		return err
+    return walker(id, client.Image{}, err)
 	}
-	if err := walker(img); err != nil {
+
+  err = walker(id, img, nil)
+	if err != nil {
+    // abort the walk
+    if err == BreakWalk {
+      return nil
+    }
 		return err
 	}
 
@@ -109,7 +141,7 @@ func (remote *RsyncRemote) ImageMetadata(id string) (client.Image, error) {
 
 	imageJson, err := ioutil.ReadFile(filepath.Join(remote.imagePath(id), "json"))
 	if os.IsNotExist(err) {
-		return image, fmt.Errorf("image %s not found", id)
+		return image, ErrNoSuchImage
 	} else if err != nil {
 		return image, err
 	}
@@ -121,6 +153,12 @@ func (remote *RsyncRemote) ImageMetadata(id string) (client.Image, error) {
 	return image, nil
 }
 
+
+func rsync(src, dst string) error {
+  return nil
+}
+
+
 func (remote *RsyncRemote) imagePath(id string) string {
 	return filepath.Join(remote.repoRoot(), "images", id)
 }
@@ -129,11 +167,3 @@ func (remote *RsyncRemote) repoRoot() string {
 	return filepath.Clean(remote.Url.Path)
 }
 
-func normaliseImageName(image string) (string, string) {
-	repoParts := strings.Split(image, ":")
-	if len(repoParts) == 1 {
-		return repoParts[0], "latest"
-	} else {
-		return repoParts[0], repoParts[1]
-	}
-}
