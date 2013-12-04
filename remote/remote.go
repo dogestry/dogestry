@@ -35,8 +35,8 @@ func NewRemote(remote string) (Remote, error) {
 	}
 
 	switch remoteUrl.Scheme {
-	case "rsync":
-		return NewRsyncRemote(*remoteUrl)
+	case "local":
+		return NewLocalRemote(*remoteUrl)
 	default:
 		return nil, fmt.Errorf("unknown remote type %s", remoteUrl.Scheme)
 	}
@@ -50,7 +50,7 @@ func normaliseURL(remoteUrl string) (*url.URL, error) {
 	}
 
 	if u.Scheme == "" {
-		u.Scheme = "rsync"
+		u.Scheme = "local"
 	}
 
 	fmt.Println("sch", u.Scheme, u.Path)
