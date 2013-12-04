@@ -3,11 +3,11 @@ package cli
 import (
 	"dogestry/client"
 	"dogestry/remote"
+	"encoding/json"
 	"fmt"
-  "encoding/json"
-  "os"
-  "os/exec"
-  "path/filepath"
+	"os"
+	"os/exec"
+	"path/filepath"
 )
 
 func (cli *DogestryCli) CmdPull(args ...string) error {
@@ -25,10 +25,10 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 	image := cmd.Arg(0)
 	remoteDef := cmd.Arg(1)
 
-  imageRoot, err := cli.WorkDir(image)
-  if err != nil {
-    return err
-  }
+	imageRoot, err := cli.WorkDir(image)
+	if err != nil {
+		return err
+	}
 	r, err := remote.NewRemote(remoteDef)
 	if err != nil {
 		return err
@@ -41,83 +41,78 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 
 	fmt.Println("root id", id)
 
-  if err := cli.preparePullImage(id, imageRoot, r); err != nil {
-    return err
-  }
+	if err := cli.preparePullImage(id, imageRoot, r); err != nil {
+		return err
+	}
 
-  if err := prepareRepositories(image, imageRoot, r); err != nil {
-    return err
-  }
+	if err := prepareRepositories(image, imageRoot, r); err != nil {
+		return err
+	}
 
-
-  if err := cli.sendTar(imageRoot); err != nil {
-    return err
-  }
-
+	if err := cli.sendTar(imageRoot); err != nil {
+		return err
+	}
 
 	// TODO docker load
 
 	return nil
 }
 
-
 func (cli *DogestryCli) preparePullImage(fromId, imageRoot string, r remote.Remote) error {
-  return r.WalkImages(fromId, func(id string, image client.Image, err error) error {
-    fmt.Println("id", id, "image", image.ID)
-    if err != nil {
-      fmt.Println("err", err)
-      return err
-    }
+	return r.WalkImages(fromId, func(id string, image client.Image, err error) error {
+		fmt.Println("id", id, "image", image.ID)
+		if err != nil {
+			fmt.Println("err", err)
+			return err
+		}
 
-    _, err = cli.client.InspectImage(id)
-    if err == client.ErrNoSuchImage {
-      return r.PullImageId(id, imageRoot)
-    } else {
-      return remote.BreakWalk
-    }
-  })
+		_, err = cli.client.InspectImage(id)
+		if err == client.ErrNoSuchImage {
+			return r.PullImageId(id, imageRoot)
+		} else {
+			return remote.BreakWalk
+		}
+	})
 }
-
 
 func prepareRepositories(image, imageRoot string, r remote.Remote) error {
-  repoName, repoTag := remote.NormaliseImageName(image)
+	repoName, repoTag := remote.NormaliseImageName(image)
 
-  id, err := r.ParseTag(repoName, repoTag)
-  if err != nil {
-    return err
-  } else if id == "" {
-    return nil
-  }
+	id, err := r.ParseTag(repoName, repoTag)
+	if err != nil {
+		return err
+	} else if id == "" {
+		return nil
+	}
 
-  reposPath := filepath.Join(imageRoot, "repositories")
-  reposFile,err := os.Create(reposPath)
-  if err != nil {
-    return err
-  }
-  defer reposFile.Close()
+	reposPath := filepath.Join(imageRoot, "repositories")
+	reposFile, err := os.Create(reposPath)
+	if err != nil {
+		return err
+	}
+	defer reposFile.Close()
 
 	repositories := map[string]Repository{}
-  repositories[repoName] = Repository{}
-  repositories[repoName][repoTag] = id
+	repositories[repoName] = Repository{}
+	repositories[repoName][repoTag] = id
 
-  return json.NewEncoder(reposFile).Encode(&repositories)
+	return json.NewEncoder(reposFile).Encode(&repositories)
 }
 
-
 func (cli *DogestryCli) sendTar(imageRoot string) error {
-  cmd := exec.Command("/bin/tar", "cvf", "-", ".")
-  cmd.Dir = imageRoot
-  defer cmd.Wait()
+	cmd := exec.Command("/bin/tar", "cvf", "-", ".")
+	cmd.Dir = imageRoot
+	defer cmd.Wait()
 
-  stdout,err := cmd.StdoutPipe()
-  if err != nil {
-    return err
-  }
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
 
-  if err := cmd.Start(); err != nil {
-    return err
-  }
+	if err := cmd.Start(); err != nil {
+		return err
+	}
 
-  fmt.Println("kicking off post")
+	fmt.Println("kicking off post")
 	return cli.client.PostImageTarball(stdout)
 }

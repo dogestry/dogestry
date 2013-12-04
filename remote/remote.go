@@ -5,22 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-  "strings"
+	"strings"
 )
 
-
 var (
-  ErrNoSuchImage = errors.New("No such image")
-  ErrNoSuchTag = errors.New("No such tag")
-  BreakWalk = errors.New("break walk")
+	ErrNoSuchImage = errors.New("No such image")
+	ErrNoSuchTag   = errors.New("No such tag")
+	BreakWalk      = errors.New("break walk")
 )
 
 type ImageWalkFn func(id string, image client.Image, err error) error
 
 type Remote interface {
-  ParseTag(repo, tag string) (string, error)
+	ParseTag(repo, tag string) (string, error)
 	Push(image, imageRoot string) error
-  PullImageId(id, imageRoot string) error
+	PullImageId(id, imageRoot string) error
 	ResolveImageNameToId(image string) (string, error)
 	WalkImages(id string, walker ImageWalkFn) error
 }
@@ -59,7 +58,6 @@ func normaliseURL(remoteUrl string) (*url.URL, error) {
 	return u, nil
 }
 
-
 func NormaliseImageName(image string) (string, string) {
 	repoParts := strings.Split(image, ":")
 	if len(repoParts) == 1 {
@@ -68,5 +66,3 @@ func NormaliseImageName(image string) (string, string) {
 		return repoParts[0], repoParts[1]
 	}
 }
-
-

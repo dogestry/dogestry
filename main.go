@@ -18,7 +18,7 @@ func main() {
 	}
 
 	if err = cli.ParseCommands(client, flag.Args()...); err != nil {
-    log.Println("err")
+		log.Println("err")
 		log.Fatal(err)
 	}
 

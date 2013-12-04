@@ -13,8 +13,6 @@ import (
 	"strings"
 )
 
-
-
 type RsyncRemote struct {
 	Url url.URL
 }
@@ -31,7 +29,7 @@ func (remote *RsyncRemote) Desc() string {
 	return remote.Url.String()
 }
 
-// 
+//
 func (remote *RsyncRemote) Push(image, imageRoot string) error {
 	log.Println("pushing rsync", remote.Url.Path)
 
@@ -50,7 +48,7 @@ func (remote *RsyncRemote) Push(image, imageRoot string) error {
 
 // pull image into imageRoot
 func (remote *RsyncRemote) PullImageId(id, imageRoot string) error {
-  log.Println("pushing rsync", remote.Url.Path)
+	log.Println("pushing rsync", remote.Url.Path)
 
 	src := remote.imagePath(id) + "/"
 	dst := filepath.Join(filepath.Clean(imageRoot), id) + "/"
@@ -99,25 +97,23 @@ func (remote *RsyncRemote) ResolveImageNameToId(image string) (string, error) {
 	return "", fmt.Errorf("no image '%s' found on %s", image, remote.Desc())
 }
 
-
-
 func (remote *RsyncRemote) WalkImages(id string, walker ImageWalkFn) error {
-  if id == "" {
-    return nil
-  }
+	if id == "" {
+		return nil
+	}
 
 	img, err := remote.ImageMetadata(id)
 	// image wasn't found
 	if err != nil {
-    return walker(id, client.Image{}, err)
+		return walker(id, client.Image{}, err)
 	}
 
-  err = walker(id, img, nil)
+	err = walker(id, img, nil)
 	if err != nil {
-    // abort the walk
-    if err == BreakWalk {
-      return nil
-    }
+		// abort the walk
+		if err == BreakWalk {
+			return nil
+		}
 		return err
 	}
 
@@ -153,11 +149,9 @@ func (remote *RsyncRemote) ImageMetadata(id string) (client.Image, error) {
 	return image, nil
 }
 
-
 func rsync(src, dst string) error {
-  return nil
+	return nil
 }
-
 
 func (remote *RsyncRemote) imagePath(id string) string {
 	return filepath.Join(remote.repoRoot(), "images", id)
@@ -166,4 +160,3 @@ func (remote *RsyncRemote) imagePath(id string) string {
 func (remote *RsyncRemote) repoRoot() string {
 	return filepath.Clean(remote.Url.Path)
 }
-
