@@ -76,3 +76,7 @@ func (c *Client) InspectImage(name string) (*Image, error) {
 func (c *Client) GetImageTarball(imageName string, w io.Writer) error {
 	return c.stream("GET", "/images/"+imageName+"/get", nil, w)
 }
+
+func (c *Client) PostImageTarball(r io.Reader) error {
+	return c.stream("POST", "/images/load", r, nil)
+}
