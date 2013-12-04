@@ -9,6 +9,9 @@ import (
 )
 
 var (
+	// ErrInvalidRemote is returned when the remote is not a valid.
+	ErrInvalidRemote = errors.New("Invalid endpoint")
+
 	ErrNoSuchImage = errors.New("No such image")
 	ErrNoSuchTag   = errors.New("No such tag")
 	BreakWalk      = errors.New("break walk")
@@ -22,12 +25,8 @@ type Remote interface {
 	PullImageId(id, imageRoot string) error
 	ResolveImageNameToId(image string) (string, error)
 	WalkImages(id string, walker ImageWalkFn) error
+	Desc() string
 }
-
-var (
-	// ErrInvalidRemote is returned when the remote is not a valid.
-	ErrInvalidRemote = errors.New("Invalid endpoint")
-)
 
 func NewRemote(remote string) (Remote, error) {
 	remoteUrl, err := normaliseURL(remote)
@@ -44,6 +43,7 @@ func NewRemote(remote string) (Remote, error) {
 }
 
 func normaliseURL(remoteUrl string) (*url.URL, error) {
+	fmt.Println("url in", remoteUrl)
 	u, err := url.Parse(remoteUrl)
 	if err != nil {
 		return nil, ErrInvalidRemote
