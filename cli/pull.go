@@ -53,8 +53,6 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 		return err
 	}
 
-	// TODO docker load
-
 	return nil
 }
 
