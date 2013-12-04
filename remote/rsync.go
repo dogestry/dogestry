@@ -14,55 +14,39 @@ import (
 )
 
 type RsyncRemote struct {
-	Url url.URL
+	Url      url.URL
+	Hostname string
+	Path     string
 }
 
 func NewRsyncRemote(url url.URL) (*RsyncRemote, error) {
 	// TODO validate
 
 	return &RsyncRemote{
-		Url: url,
+		Url:      url,
+		Hostname: url.Host,
+		Path:     url.Path,
 	}, nil
 }
 
 func (remote *RsyncRemote) Desc() string {
-	return remote.Url.String()
+	return fmt.Sprintf("rsync(%s:%s)", remote.Hostname, remote.Path)
 }
 
-//
 func (remote *RsyncRemote) Push(image, imageRoot string) error {
 	log.Println("pushing rsync", remote.Url.Path)
 
-	src := filepath.Clean(imageRoot) + "/"
-	dst := filepath.Clean(remote.Url.Path) + "/"
-
-	log.Println("rsync", "-av", src, dst)
-	out, err := exec.Command("rsync", "-av", src, dst).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("rsync failed: %s\noutput: %s", err, string(out))
-	}
-	log.Println(string(out))
-
-	return nil
+	return remote.rsyncTo(imageRoot, "")
 }
 
 // pull image into imageRoot
 func (remote *RsyncRemote) PullImageId(id, imageRoot string) error {
 	log.Println("pushing rsync", remote.Url.Path)
 
-	src := remote.imagePath(id) + "/"
-	dst := filepath.Join(filepath.Clean(imageRoot), id) + "/"
-
-	log.Println("rsync", "-av", src, dst)
-	out, err := exec.Command("rsync", "-av", src, dst).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("rsync failed: %s\noutput: %s", err, string(out))
-	}
-	log.Println(string(out))
-
-	return nil
+	return remote.rsyncFrom("images/"+id, id)
 }
 
+// TODO make this truly remote
 func (remote *RsyncRemote) ResolveImageNameToId(image string) (string, error) {
 	fmt.Println("hi resolving")
 
@@ -120,6 +104,7 @@ func (remote *RsyncRemote) WalkImages(id string, walker ImageWalkFn) error {
 	return remote.WalkImages(img.Parent, walker)
 }
 
+// TODO get this to work remotely (scp?)
 func (remote *RsyncRemote) ParseTag(repo, tag string) (string, error) {
 	repoPath := filepath.Join(filepath.Clean(remote.Url.Path), "repositories", repo, tag)
 
@@ -135,6 +120,7 @@ func (remote *RsyncRemote) ParseTag(repo, tag string) (string, error) {
 func (remote *RsyncRemote) ImageMetadata(id string) (client.Image, error) {
 	image := client.Image{}
 
+	// TODO make this truly remote
 	imageJson, err := ioutil.ReadFile(filepath.Join(remote.imagePath(id), "json"))
 	if os.IsNotExist(err) {
 		return image, ErrNoSuchImage
@@ -149,14 +135,35 @@ func (remote *RsyncRemote) ImageMetadata(id string) (client.Image, error) {
 	return image, nil
 }
 
-func rsync(src, dst string) error {
+// TODO factor this out
+func (remote *RsyncRemote) rsyncTo(src, dst string) error {
+	return rsync(src+"/", remote.RemotePath(dst)+"/")
+}
+
+func (remote *RsyncRemote) rsyncFrom(src, dst string) error {
+	return rsync(remote.RemotePath(src)+"/", dst+"/")
+}
+
+func (remote *RsyncRemote) rsync(src, dst string) error {
+	fmt.Println("rsync", "-av", src, dst)
+	out, err := exec.Command("rsync", "-av", src, dst).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("rsync failed: %s\noutput: %s", err, string(out))
+	}
+	log.Println(string(out))
+
 	return nil
 }
 
 func (remote *RsyncRemote) imagePath(id string) string {
-	return filepath.Join(remote.repoRoot(), "images", id)
+	return remote.RemotePath("images", id)
 }
 
-func (remote *RsyncRemote) repoRoot() string {
-	return filepath.Clean(remote.Url.Path)
+func (remote *RsyncRemote) RemotePath(part ...string) string {
+	path := filepath.Join(remote.Path, filepath.Join(part...))
+	if remote.Hostname != "" {
+		return remote.Hostname + ":" + path
+	} else {
+		return path
+	}
 }
