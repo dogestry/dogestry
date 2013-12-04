@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	//"launchpad.net/goamz/s3"
 	//"os"
 	"dogestry/cli"
 	"dogestry/client"
