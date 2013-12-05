@@ -81,7 +81,7 @@ func (remote *S3Remote) getBucket() (*S3Bucket, error) {
   fmt.Println("url", url)
 
   r, _ := http.NewRequest("GET", url, nil)
-  r.Header.Set("host", remote.Bucket+".s3.us-west-2.amazonaws.com")
+  r.Header.Set("host", remote.Bucket+".s3-us-west-2.amazonaws.com")
   r.Header.Set("date", time.Now().Format(http.TimeFormat))
 
   fmt.Println("r", r)
