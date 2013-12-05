@@ -81,18 +81,21 @@ func (remote *S3Remote) getBucket() (*S3Bucket, error) {
   fmt.Println("url", url)
 
   r, _ := http.NewRequest("GET", url, nil)
-  r.Header.Set("Host", remote.Bucket+".s3-us-west-2.amazonaws.com")
-  r.Header.Set("Date", time.Now().Format(http.TimeFormat))
+  r.Header.Set("host", remote.Bucket+".s3.us-west-2.amazonaws.com")
+  r.Header.Set("date", time.Now().Format(http.TimeFormat))
 
   fmt.Println("r", r)
 
   resp,err := remote.client.Do(r)
   if err != nil {
-    fmt.Println("err Do", resp)
-    io.Copy(os.Stdout, resp.Body)
+    if resp != nil {
+      fmt.Println("err Do", resp)
+      io.Copy(os.Stdout, resp.Body)
+    }
     return &S3Bucket{}, err
   }
   if resp.StatusCode != 200 {
+    io.Copy(os.Stdout, resp.Body)
     return &S3Bucket{}, fmt.Errorf("error getting bucket location: %s", resp.Status)
   }
 
