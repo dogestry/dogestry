@@ -60,9 +60,9 @@ func writeSignature(keys *Keys, w io.Writer, r *http.Request) {
 func writeStringToSign(w io.Writer, r *http.Request) {
   w.Write([]byte(r.Method))
   w.Write(lf)
-  writeHeader('content-md5', w, r)
+  writeHeader("content-md5", w, r)
   w.Write(lf)
-  writeHeader('content-type', w, r)
+  writeHeader("content-type", w, r)
   w.Write(lf)
   writeDate(w, r)
   w.Write(lf)
@@ -85,12 +85,14 @@ func writeDate(w io.Writer, r *http.Request) {
 func writeCanonicalAmzHeaders(w io.Writer, r *http.Request) {
   headers := make([]string)
   for header := range r.Header {
+    header = strings.ToLower(header)
     if strings.HasPrefix(header, "x-amz-") {
       headers = append(headers, header)
     }
   }
 
   sort.Strings(headers)
+
   for i,header := range headers {
     //vall := strings.Join(value, ",")
     w.Write([]byte(header+":"r.Header.Get(header)))
@@ -99,6 +101,22 @@ func writeCanonicalAmzHeaders(w io.Writer, r *http.Request) {
 
 
 func writeCanonicalResource(w io.Writer, r *http.Request) {
+  hostParts := strings.Split(r.Host, ".")
+
+  if len(hostParts) > 3 {
+    writeVhostStyleCanonicalResource(w, r)
+  } else {
+    writePathStyleCanonicalResource(w, r)
+  }
+}
+
+
+func writeVhostStyleCanonicalResource(w io.Writer, r *http.Request) {
+}
+
+func writePathStyleCanonicalResource io.Writer, r *http.Request) {
+}
+
   keys := make([]string)
   for k, v := range params {
     if s3ParamsToSign[k] {
