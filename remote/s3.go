@@ -1,8 +1,11 @@
 package remote
 
 import (
-	"launchpad.net/goamz/s3"
-	"launchpad.net/goamz/aws"
+	"github.com/lachie/goamz/s3"
+	"github.com/lachie/goamz/aws"
+  "crypto/md5"
+  "encoding/hex"
+  "bufio"
 
   "fmt"
   //"io/ioutil"
@@ -10,9 +13,10 @@ import (
   "net/url"
   //"time"
   "path/filepath"
+  "strings"
 
-  //"io"
-  //"os"
+  "io"
+  "os"
 )
 
 type S3Remote struct {
@@ -38,19 +42,45 @@ func NewS3Remote(url url.URL) (*S3Remote, error) {
 
   s3 := s3.New(auth, aws.USWest2)
 
+  prefix := strings.TrimPrefix(url.Path, "/")
+
 
 	return &S3Remote{
 		BucketName:    url.Host,
-		KeyPrefix: url.Path,
+		KeyPrefix: prefix,
     client: s3,
 	}, nil
 }
 
 func (remote *S3Remote) Desc() string {
-  return fmt.Sprintf("s3(bucket=%s, prefix=%s)", remote.Bucket, remote.KeyPrefix)
+  return fmt.Sprintf("s3(bucket=%s, prefix=%s)", remote.BucketName, remote.KeyPrefix)
 }
 
 func (remote *S3Remote) Push(image, imageRoot string) error {
+  remoteKeys,err := remote.repoKeys()
+  if err != nil {
+    return err
+  }
+
+  localKeys,err := remote.localKeys(imageRoot)
+  if err != nil {
+    return err
+  }
+
+  for name, key := range localKeys {
+    fmt.Println("local name", name, "etag", key.ETag)
+  }
+
+  for name, key := range remoteKeys {
+    fmt.Println("   s3 name", name, "etag", key.ETag)
+  }
+
+  for key,localKey := range localKeys {
+    if remoteKey,ok := remoteKeys[key]; !ok || remoteKey.ETag != localKey.ETag  {
+      fmt.Println("want to push", key)
+    }
+  }
+
   return nil
 }
 
@@ -97,3 +127,74 @@ type S3Bucket struct {
 func TagFilePath(repo, tag string) string {
   return filepath.Join("repositories", repo, tag)
 }
+
+
+func (remote *S3Remote) repoKeys() (map[string]s3.Key, error) {
+  repoKeys := make(map[string]s3.Key)
+
+  cnt,err := remote.getBucket().GetBucketContentsWithPrefix(remote.KeyPrefix)
+  if err != nil {
+    return repoKeys,err
+  }
+
+  for name, key := range *cnt {
+    key.Key = strings.TrimPrefix(name, remote.KeyPrefix)
+    key.ETag = strings.TrimRight(strings.TrimLeft(key.ETag, "\""), "\"")
+    if key.Key != "" {
+      repoKeys[key.Key] = key
+    }
+  }
+
+  return repoKeys, nil
+}
+
+
+func (remote *S3Remote) localKeys(root string) (map[string]s3.Key, error) {
+  repoKeys := make(map[string]s3.Key)
+
+  if root[len(root)-1] != '/' {
+    root = root + "/"
+  }
+
+  err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+    if info.IsDir() {
+      return nil
+    }
+
+    sum,err := md5File(path)
+    if err != nil {
+      return err
+    }
+
+    key := strings.TrimPrefix(path, root)
+
+    repoKeys[key] = s3.Key{
+      Key: key,
+      ETag: sum,
+    }
+
+    return nil
+  })
+
+  if err != nil {
+    return repoKeys, nil
+  }
+
+  return repoKeys, nil
+}
+
+func md5File(path string) (string, error) {
+  f, err := os.Open(path)
+  if err != nil {
+    return "", nil
+  }
+  defer f.Close()
+
+  // files could be pretty big, lets buffer
+  buff := bufio.NewReader(f)
+  hash := md5.New()
+
+  io.Copy(hash, buff)
+  return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
