@@ -13,6 +13,7 @@ import (
   "net/url"
   //"time"
   "path/filepath"
+  "path"
   "strings"
 
   "io"
@@ -76,13 +77,19 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
   }
 
   for key,localKey := range localKeys {
-    if remoteKey,ok := remoteKeys[key]; !ok || remoteKey.ETag != localKey.ETag  {
+    if remoteKey,ok := remoteKeys[key]; !ok || remoteKey.ETag != localKey.ETag {
       fmt.Println("want to push", key)
+
+      if err := remote.putFile(imageRoot, localKey.Key); err != nil {
+        return err
+      }
     }
   }
 
   return nil
 }
+
+
 
 func (remote *S3Remote) PullImageId(id, imageRoot string) error {
   return nil
@@ -90,7 +97,6 @@ func (remote *S3Remote) PullImageId(id, imageRoot string) error {
 
 func (remote *S3Remote) ParseTag(repo, tag string) (string, error) {
   bucket := remote.getBucket()
-  fmt.Println("b", bucket)
 
   file,err := bucket.Get(TagFilePath(repo, tag))
   if s3err,ok := err.(*s3.Error); ok && s3err.StatusCode == 404 {
@@ -115,6 +121,7 @@ func (remote *S3Remote) WalkImages(id string, walker ImageWalkFn) error {
 
 
 func (remote *S3Remote) getBucket() (*s3.Bucket) {
+  // memoise?
   return remote.client.Bucket(remote.BucketName)
 }
 
@@ -198,3 +205,29 @@ func md5File(path string) (string, error) {
   return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
+
+func (remote *S3Remote) remoteKey(key string) string {
+  return path.Join(remote.KeyPrefix, key)
+}
+
+
+func (remote *S3Remote) putFile(imageRoot, key string) error {
+  path := filepath.Join(imageRoot, key)
+  key = remote.remoteKey(key)
+
+  f,err := os.Open(path)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+
+  finfo,err := os.Stat(path)
+  if err != nil {
+    return err
+  }
+
+  fmt.Println("putting", key, finfo.Size())
+
+  buff := bufio.NewReader(f)
+  return remote.getBucket().PutReader(key, buff, finfo.Size(), "application/octet-stream", s3.Private)
+}
