@@ -1,21 +1,25 @@
 package remote
 
 import (
-	"github.com/lachie/aws4"
+	"launchpad.net/goamz/s3"
+	"launchpad.net/goamz/aws"
+
   "fmt"
   //"io/ioutil"
   "net/http"
   "net/url"
-  "time"
+  //"time"
+  "path/filepath"
 
-  "io"
-  "os"
+  //"io"
+  //"os"
 )
 
 type S3Remote struct {
-	Bucket    string
+  BucketName string
+	Bucket    *s3.Bucket
 	KeyPrefix string
-  client aws4.Client
+  client *s3.S3
 }
 
 var (
@@ -27,21 +31,18 @@ func redirectPolicyFunc(req *http.Request, via []*http.Request) error {
 }
 
 func NewS3Remote(url url.URL) (*S3Remote, error) {
-
-	c, err := aws4.NewClientFromEnv()
-	if err != nil {
-		return &S3Remote{}, err
-	}
-
-  c.Client = &http.Client{
-    CheckRedirect: redirectPolicyFunc,
+  auth, err := aws.EnvAuth()
+  if err != nil {
+    return nil, err
   }
+
+  s3 := s3.New(auth, aws.USWest2)
 
 
 	return &S3Remote{
-		Bucket:    url.Host,
+		BucketName:    url.Host,
 		KeyPrefix: url.Path,
-    client: c,
+    client: s3,
 	}, nil
 }
 
@@ -58,12 +59,20 @@ func (remote *S3Remote) PullImageId(id, imageRoot string) error {
 }
 
 func (remote *S3Remote) ParseTag(repo, tag string) (string, error) {
-  bucket,err := remote.getBucket()
-  if err != nil {
+  bucket := remote.getBucket()
+  fmt.Println("b", bucket)
+
+  file,err := bucket.Get(TagFilePath(repo, tag))
+  if s3err,ok := err.(*s3.Error); ok && s3err.StatusCode == 404 {
+    // doesn't exist yet, deal with it
+    return "", nil
+  } else if err != nil {
     return "", err
   }
-  fmt.Println("b", bucket)
-  return "", nil
+
+  fmt.Println("got", string(file))
+
+  return string(file), nil
 }
 
 func (remote *S3Remote) ResolveImageNameToId(image string) (string, error) {
@@ -75,38 +84,16 @@ func (remote *S3Remote) WalkImages(id string, walker ImageWalkFn) error {
 }
 
 
-func (remote *S3Remote) getBucket() (*S3Bucket, error) {
-  url := "https://s3-us-west-2.amazonaws.com/"
-
-  fmt.Println("url", url)
-
-  r, _ := http.NewRequest("GET", url, nil)
-  r.Header.Set("host", remote.Bucket+".s3-us-west-2.amazonaws.com")
-  r.Header.Set("date", time.Now().Format(http.TimeFormat))
-
-  fmt.Println("r", r)
-
-  resp,err := remote.client.Do(r)
-  if err != nil {
-    if resp != nil {
-      fmt.Println("err Do", resp)
-      io.Copy(os.Stdout, resp.Body)
-    }
-    return &S3Bucket{}, err
-  }
-  if resp.StatusCode != 200 {
-    io.Copy(os.Stdout, resp.Body)
-    return &S3Bucket{}, fmt.Errorf("error getting bucket location: %s", resp.Status)
-  }
-
-  //io.Copy(os.Stdout, resp.Body)
-
-  fmt.Println("resp", resp)
-
-  return &S3Bucket{}, nil
+func (remote *S3Remote) getBucket() (*s3.Bucket) {
+  return remote.client.Bucket(remote.BucketName)
 }
 
 
 type S3Bucket struct {
   Name string
+}
+
+
+func TagFilePath(repo, tag string) string {
+  return filepath.Join("repositories", repo, tag)
 }
