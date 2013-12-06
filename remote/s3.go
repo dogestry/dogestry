@@ -226,8 +226,6 @@ func (remote *S3Remote) putFile(imageRoot, key string) error {
     return err
   }
 
-  fmt.Println("putting", key, finfo.Size())
-
   buff := bufio.NewReader(f)
   return remote.getBucket().PutReader(key, buff, finfo.Size(), "application/octet-stream", s3.Private)
 }
