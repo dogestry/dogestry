@@ -31,8 +31,12 @@ func (cli *DogestryCli) CmdS3(args ...string) error {
   if err != nil {
     return err
   }
-
   fmt.Println("id", id)
+
+  err = r.Push(cmd.Arg(1), "/tmp/doge")
+  if err != nil {
+    return err
+  }
 
   return nil
 }
