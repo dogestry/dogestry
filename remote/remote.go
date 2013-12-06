@@ -55,8 +55,6 @@ func normaliseURL(remoteUrl string) (*url.URL, error) {
     u.Scheme = "local"
   }
 
-  fmt.Println("sch", u.Scheme, u.Path)
-
   return u, nil
 }
 
