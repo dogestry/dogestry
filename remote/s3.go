@@ -14,6 +14,7 @@ import (
   "path"
   "path/filepath"
   "strings"
+  "dogestry/utils"
 
   "io"
   "os"
@@ -91,7 +92,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 
   for key, localKey := range localKeys {
     if remoteKey, ok := remoteKeys[key]; !ok || remoteKey.ETag != localKey.ETag {
-      fmt.Println("pushing key", key)
+      fmt.Printf("pushing key %s (%s)\n", key, utils.FileHumanSize(filepath.Join(imageRoot,localKey.Key)))
 
       if err := remote.putFile(imageRoot, localKey.Key); err != nil {
         return err

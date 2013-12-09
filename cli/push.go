@@ -1,18 +1,18 @@
 package cli
 
 import (
-  "archive/tar"
   "dogestry/remote"
+  "dogestry/utils"
   "encoding/json"
+
+  "archive/tar"
   "fmt"
   "io"
   "io/ioutil"
-  "log"
   "os"
   "os/exec"
   "path/filepath"
   "strings"
-  // "github.com/bkaradzic/go-lz4"
 )
 
 func (cli *DogestryCli) CmdPush(args ...string) error {
@@ -67,11 +67,9 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
   go func() {
     // consume the tar
     for {
-      log.Println("waiting")
       header, err := tarball.Next()
       if err == io.EOF {
         // end of tar archive
-        log.Println("eof tar")
         break
       }
       if err != nil {
@@ -84,7 +82,6 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
         return
       }
     }
-    log.Println("tar done")
 
     // donno... read a bit more?
     if _, err := ioutil.ReadAll(reader); err != nil {
@@ -95,9 +92,7 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
     errch <- nil
   }()
 
-  log.Println("making req")
   if err := cli.client.GetImageTarball(image, writer); err != nil {
-    fmt.Println("oops", writer)
     // this should stop the tar reader
     writer.Close()
     <-errch
@@ -106,24 +101,21 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
 
   writer.Close()
 
-  log.Println("req done")
-
   // wait for the tar reader
   if err := <-errch; err != nil {
     return err
   }
-  log.Println("ok")
 
   return nil
 }
 
 func (cli *DogestryCli) processTarEntry(root string, header *tar.Header, tarball io.Reader) error {
-  log.Printf("processing %s:\n", header.Name)
-
+  // only handle files (directories are implicit)
   if header.Typeflag == tar.TypeReg {
+    fmt.Printf("  tar: processing %s\n", header.Name)
+
     // special case - repositories file
     if filepath.Base(header.Name) == "repositories" {
-      fmt.Println("repos")
       if err := writeRepositories(root, tarball); err != nil {
         return err
       }
@@ -132,12 +124,10 @@ func (cli *DogestryCli) processTarEntry(root string, header *tar.Header, tarball
       barename := strings.TrimPrefix(header.Name, "./")
 
       dest := filepath.Join(root, "images", barename)
-      fmt.Println(barename, "->", dest)
       if err := os.MkdirAll(filepath.Dir(dest), os.ModeDir|0700); err != nil {
         return err
       }
 
-      fmt.Println("creating ", dest)
       destFile, err := os.Create(dest)
       if err != nil {
         return err
@@ -147,7 +137,7 @@ func (cli *DogestryCli) processTarEntry(root string, header *tar.Header, tarball
       if wrote, err := io.Copy(destFile, tarball); err != nil {
         return err
       } else {
-        log.Println("wrote", wrote)
+        fmt.Printf("  tar: wrote %s\n", utils.HumanSize(wrote))
       }
       destFile.Close()
 
@@ -181,7 +171,6 @@ func writeRepositories(root string, tarball io.Reader) error {
         return err
       }
 
-      fmt.Println("writing repo", dest, id, []byte(id))
       if err := ioutil.WriteFile(dest, []byte(id), 0600); err != nil {
         return err
       }

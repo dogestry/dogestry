@@ -169,11 +169,10 @@ func (c *Client) stream(method, path string, in io.Reader, out io.Writer) error 
 			}
 		}
 	} else {
-		fmt.Println("copying body")
 		if copied, err := io.Copy(out, resp.Body); err != nil {
 			return err
 		} else {
-			fmt.Printf("copied %d\n", copied)
+			fmt.Printf("copied %d B\n", copied)
 		}
 	}
 	return nil
