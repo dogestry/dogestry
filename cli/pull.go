@@ -41,10 +41,12 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 
   fmt.Println("root id", id)
 
+  fmt.Println("preparing images")
   if err := cli.preparePullImage(id, imageRoot, r); err != nil {
     return err
   }
 
+  fmt.Println("preparing repositories file")
   if err := prepareRepositories(image, imageRoot, r); err != nil {
     return err
   }
