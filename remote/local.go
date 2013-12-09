@@ -70,27 +70,9 @@ func (remote *LocalRemote) ImageFullId(id string) (string,error) {
 }
 
 func (remote *LocalRemote) WalkImages(id string, walker ImageWalkFn) error {
-  if id == "" {
-    return nil
-  }
-
-  img, err := remote.ImageMetadata(id)
-  // image wasn't found
-  if err != nil {
-    return walker(id, client.Image{}, err)
-  }
-
-  err = walker(id, img, nil)
-  if err != nil {
-    // abort the walk
-    if err == BreakWalk {
-      return nil
-    }
-    return err
-  }
-
-  return remote.WalkImages(img.Parent, walker)
+  return WalkImages(remote, id, walker)
 }
+
 
 func (remote *LocalRemote) ParseTag(repo, tag string) (string, error) {
   repoPath := filepath.Join(filepath.Clean(remote.Url.Path), "repositories", repo, tag)

@@ -34,6 +34,8 @@ type Remote interface {
 
   ImageFullId(id string) (string,error)
 
+  ImageMetadata(id string) (client.Image, error)
+
   // walk the image history on the remote, starting at id
   WalkImages(id string, walker ImageWalkFn) error
 
@@ -103,4 +105,29 @@ func ResolveImageNameToId(remote Remote, image string) (string, error) {
   }
 
   return "", ErrNoSuchImage
+}
+
+
+
+func WalkImages(remote Remote, id string, walker ImageWalkFn) error {
+  if id == "" {
+    return nil
+  }
+
+  img, err := remote.ImageMetadata(id)
+  // image wasn't found
+  if err != nil {
+    return walker(id, client.Image{}, err)
+  }
+
+  err = walker(id, img, nil)
+  if err != nil {
+    // abort the walk
+    if err == BreakWalk {
+      return nil
+    }
+    return err
+  }
+
+  return remote.WalkImages(img.Parent, walker)
 }
