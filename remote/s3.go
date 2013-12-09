@@ -111,9 +111,10 @@ func (remote *S3Remote) ParseTag(repo, tag string) (string, error) {
   return string(file), nil
 }
 
-func (remote *S3Remote) ResolveImageNameToId(image string) (string, error) {
+func (remote *S3Remote) ImageFullId(name string) (string, error) {
   return "", nil
 }
+
 
 func (remote *S3Remote) WalkImages(id string, walker ImageWalkFn) error {
   return nil

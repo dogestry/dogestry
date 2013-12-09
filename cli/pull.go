@@ -34,7 +34,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
     return err
   }
 
-  id, err := r.ResolveImageNameToId(image)
+  id, err := remote.ResolveImageNameToId(r,image)
   if err != nil {
     return err
   }
@@ -74,17 +74,26 @@ func (cli *DogestryCli) preparePullImage(fromId, imageRoot string, r remote.Remo
 }
 
 func pullImage(id, dst string, r remote.Remote) error {
-  r.PullImageId(id, dst)
+  err := r.PullImageId(id, dst)
+  if err != nil {
+    return err
+  }
   return processPulled(id, dst)
 }
 
 
-func processImage(id, dst string) error {
-  layerFile := filepath.Join(dst+"layer.tar")
-  compressedLayerFile := filepath.Join(dst+"layer.tar.lz4")
+func processPulled(id, dst string) error {
+  compressedLayerFile := filepath.Join(dst, "layer.tar.lz4")
+  layerFile := filepath.Join(dst, "layer.tar")
 
-  if _,err := os.Stat(compressedLayerFile); os.IsExist(err) {
-    return exec.Command("./lz4", "-d", compressedLayerFile, layerFile).Run()
+  if _,err := os.Stat(compressedLayerFile); !os.IsNotExist(err) {
+    fmt.Println("exists?", compressedLayerFile)
+    cmd := exec.Command("./lz4", "-d", "-f", compressedLayerFile, layerFile)
+    if err := cmd.Run(); err != nil {
+      return err
+    }
+
+    return os.Remove(compressedLayerFile)
   }
 
   return nil

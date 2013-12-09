@@ -194,5 +194,10 @@ func writeRepositories(root string, tarball io.Reader) error {
 // would use go version if we could (needs a streaming version)
 // lz4 is low compression, but extremely fast
 func compress(path string) error {
-  return exec.Command("./lz4", path, path+".lz4").Run()
+  err := exec.Command("./lz4", path, path+".lz4").Run()
+  if err != nil {
+    return err
+  }
+
+  return os.Remove(path)
 }

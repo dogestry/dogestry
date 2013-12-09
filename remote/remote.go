@@ -30,7 +30,7 @@ type Remote interface {
   ParseTag(repo, tag string) (string, error)
 
   // map a ref-like to id. "ref-like" could be a ref or an id.
-  ResolveImageNameToId(image string) (string, error)
+  //ResolveImageNameToId(image string) (string, error)
 
   ImageFullId(id string) (string,error)
 
@@ -40,9 +40,6 @@ type Remote interface {
   // describe the remote
   Desc() string
 }
-
-
-type AbstractRemote struct {}
 
 func NewRemote(remote string) (Remote, error) {
   remoteUrl, err := normaliseURL(remote)
@@ -85,7 +82,7 @@ func NormaliseImageName(image string) (string, string) {
 
 
 
-func (remote Remote) ResolveImageNameToId(image string) (string, error) {
+func ResolveImageNameToId(remote Remote, image string) (string, error) {
   fmt.Println("hi resolving")
 
   // first, try the repos
@@ -101,7 +98,7 @@ func (remote Remote) ResolveImageNameToId(image string) (string, error) {
   fullId,err := remote.ImageFullId(image)
   if err != nil {
     return "", err
-  } else if found {
+  } else if fullId != "" {
     return fullId, nil
   }
 

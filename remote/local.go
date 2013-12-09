@@ -107,7 +107,6 @@ func (remote *LocalRemote) ParseTag(repo, tag string) (string, error) {
 func (remote *LocalRemote) ImageMetadata(id string) (client.Image, error) {
   image := client.Image{}
 
-  // TODO make this truly remote
   imageJson, err := ioutil.ReadFile(filepath.Join(remote.imagePath(id), "json"))
   if os.IsNotExist(err) {
     return image, ErrNoSuchImage
