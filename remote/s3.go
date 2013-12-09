@@ -1,11 +1,13 @@
 package remote
 
 import (
+  "dogestry/client"
 	"github.com/lachie/goamz/s3"
 	"github.com/lachie/goamz/aws"
   "crypto/md5"
   "encoding/hex"
   "bufio"
+  "encoding/json"
 
   "fmt"
   //"io/ioutil"
@@ -91,15 +93,16 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 
 
 
-func (remote *S3Remote) PullImageId(id, imageRoot string) error {
-  imageKeys,err := remote.repoKeys("/images/"+id)
+func (remote *S3Remote) PullImageId(id, dst string) error {
+  rootKey := "/images/"+id
+  imageKeys,err := remote.repoKeys(rootKey)
   if err != nil {
     return err
   }
 
   fmt.Println("imageKeys", imageKeys)
 
-  return nil
+  return remote.getFiles(dst, rootKey, imageKeys)
 }
 
 func (remote *S3Remote) ParseTag(repo, tag string) (string, error) {
@@ -128,7 +131,27 @@ func (remote *S3Remote) ImageFullId(name string) (string, error) {
 
 
 func (remote *S3Remote) WalkImages(id string, walker ImageWalkFn) error {
-  return nil
+  return WalkImages(remote, id, walker)
+}
+
+
+func (remote *S3Remote) ImageMetadata(id string) (client.Image, error) {
+  jsonPath := path.Join(remote.imagePath(id), "json")
+  image := client.Image{}
+
+  imageJson,err := remote.getBucket().Get(jsonPath)
+  if s3err,ok := err.(*s3.Error); ok && s3err.StatusCode == 404 {
+    // doesn't exist yet, deal with it
+    return image, ErrNoSuchImage
+  } else if err != nil {
+    return image, err
+  }
+
+  if err := json.Unmarshal(imageJson, &image); err != nil {
+    return image, err
+  }
+
+  return image, nil
 }
 
 
@@ -143,9 +166,8 @@ type S3Bucket struct {
 }
 
 
-func (remote *S3Remote) TagFilePath(repo, tag string) string {
-  return filepath.Join(remote.KeyPrefix, "repositories", repo, tag)
-}
+
+
 
 
 func (remote *S3Remote) repoKeys(prefix string) (map[string]s3.Key, error) {
@@ -241,4 +263,54 @@ func (remote *S3Remote) putFile(imageRoot, key string) error {
 
   buff := bufio.NewReader(f)
   return remote.getBucket().PutReader(key, buff, finfo.Size(), "application/octet-stream", s3.Private)
+}
+
+
+func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys map[string]s3.Key) error {
+  for key,_ := range imageKeys {
+    relKey := strings.TrimPrefix(key,rootKey)
+    err := remote.getFile(filepath.Join(dst, relKey), key)
+    if err != nil {
+      return err
+    }
+  }
+
+  return nil
+}
+
+
+func (remote *S3Remote) getFile(dst, key string) error {
+  key = path.Join(remote.KeyPrefix, key)
+  fmt.Println("getting", key, "to", dst)
+
+  from,err := remote.getBucket().GetReader(key)
+  if err != nil {
+    return err
+  }
+  defer from.Close()
+  bufFrom := bufio.NewReader(from)
+
+  if err := os.MkdirAll(filepath.Dir(dst), 0700); err != nil {
+    return err
+  }
+
+  to,err := os.Create(dst)
+  if err != nil {
+    return err
+  }
+
+  io.Copy(to, bufFrom)
+  // TODO check if file exists
+  return nil
+}
+
+
+
+func (remote *S3Remote) TagFilePath(repo, tag string) string {
+  return filepath.Join(remote.KeyPrefix, "repositories", repo, tag)
+}
+
+
+func (remote *S3Remote) imagePath(id string) string {
+  return filepath.Join(remote.KeyPrefix, "images", id)
 }
