@@ -73,6 +73,9 @@ func (remote *LocalRemote) WalkImages(id string, walker ImageWalkFn) error {
   return WalkImages(remote, id, walker)
 }
 
+func (remote *LocalRemote) ResolveImageNameToId(image string) (string, error) {
+  return ResolveImageNameToId(remote, image)
+}
 
 func (remote *LocalRemote) ParseTag(repo, tag string) (string, error) {
   repoPath := filepath.Join(filepath.Clean(remote.Url.Path), "repositories", repo, tag)

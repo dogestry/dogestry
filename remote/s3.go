@@ -125,6 +125,9 @@ func (remote *S3Remote) ParseTag(repo, tag string) (string, error) {
   return string(file), nil
 }
 
+func (remote *S3Remote) ResolveImageNameToId(image string) (string, error) {
+  return ResolveImageNameToId(remote, image)
+}
 
 func (remote *S3Remote) ImageFullId(name string) (string, error) {
   remoteKeys,err := remote.repoKeys("/images")

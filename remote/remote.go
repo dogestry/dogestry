@@ -30,7 +30,7 @@ type Remote interface {
   ParseTag(repo, tag string) (string, error)
 
   // map a ref-like to id. "ref-like" could be a ref or an id.
-  //ResolveImageNameToId(image string) (string, error)
+  ResolveImageNameToId(image string) (string, error)
 
   ImageFullId(id string) (string,error)
 

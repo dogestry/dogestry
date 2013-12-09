@@ -34,7 +34,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
     return err
   }
 
-  id, err := remote.ResolveImageNameToId(r,image)
+  id, err := r.ResolveImageNameToId(image)
   if err != nil {
     return err
   }
@@ -83,12 +83,11 @@ func pullImage(id, dst string, r remote.Remote) error {
   return processPulled(id, dst)
 }
 
-
 func processPulled(id, dst string) error {
   compressedLayerFile := filepath.Join(dst, "layer.tar.lz4")
   layerFile := filepath.Join(dst, "layer.tar")
 
-  if _,err := os.Stat(compressedLayerFile); !os.IsNotExist(err) {
+  if _, err := os.Stat(compressedLayerFile); !os.IsNotExist(err) {
     fmt.Println("exists?", compressedLayerFile)
     cmd := exec.Command("./lz4", "-d", "-f", compressedLayerFile, layerFile)
     if err := cmd.Run(); err != nil {
@@ -100,7 +99,6 @@ func processPulled(id, dst string) error {
 
   return nil
 }
-
 
 func prepareRepositories(image, imageRoot string, r remote.Remote) error {
   repoName, repoTag := remote.NormaliseImageName(image)
