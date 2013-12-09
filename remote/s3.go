@@ -1,21 +1,21 @@
 package remote
 
 import (
-  "dogestry/client"
-	"github.com/lachie/goamz/s3"
-	"github.com/lachie/goamz/aws"
-  "crypto/md5"
-  "encoding/hex"
   "bufio"
+  "crypto/md5"
+  "dogestry/client"
+  "encoding/hex"
   "encoding/json"
+  "github.com/lachie/goamz/aws"
+  "github.com/lachie/goamz/s3"
 
   "fmt"
   //"io/ioutil"
   "net/http"
   "net/url"
   //"time"
-  "path/filepath"
   "path"
+  "path/filepath"
   "strings"
 
   "io"
@@ -24,13 +24,13 @@ import (
 
 type S3Remote struct {
   BucketName string
-	Bucket    *s3.Bucket
-	KeyPrefix string
-  client *s3.S3
+  Bucket     *s3.Bucket
+  KeyPrefix  string
+  client     *s3.S3
 }
 
 var (
-	S3DefaultRegion = "us-west-2"
+  S3DefaultRegion = "us-west-2"
 )
 
 func redirectPolicyFunc(req *http.Request, via []*http.Request) error {
@@ -38,21 +38,44 @@ func redirectPolicyFunc(req *http.Request, via []*http.Request) error {
 }
 
 func NewS3Remote(url url.URL) (*S3Remote, error) {
-  auth, err := aws.EnvAuth()
+  s3, err := newS3Client(url)
   if err != nil {
-    return nil, err
+    return &S3Remote{}, nil
   }
-
-  s3 := s3.New(auth, aws.USWest2)
 
   prefix := strings.TrimPrefix(url.Path, "/")
 
+  return &S3Remote{
+    BucketName: url.Host,
+    KeyPrefix:  prefix,
+    client:     s3,
+  }, nil
+}
 
-	return &S3Remote{
-		BucketName:    url.Host,
-		KeyPrefix: prefix,
-    client: s3,
-	}, nil
+func newS3Client(url url.URL) (*s3.S3, error) {
+  auth, err := getS3Auth()
+  if err != nil {
+    return &s3.S3{}, err
+  }
+
+  var regionName string
+  regQuery := url.Query()["region"]
+  if len(regQuery) > 0 && regQuery[0] != "" {
+    regionName = regQuery[0]
+  } else {
+    regionName = S3DefaultRegion
+  }
+
+  region := aws.Regions[regionName]
+
+  return s3.New(auth, region), nil
+}
+
+func getS3Auth() (aws.Auth, error) {
+  //filepath.join(os.Getenv("HOME"), ".ec2", "")
+  //os.Stat(
+
+  return aws.GetAuth("", "")
 }
 
 func (remote *S3Remote) Desc() string {
@@ -60,12 +83,12 @@ func (remote *S3Remote) Desc() string {
 }
 
 func (remote *S3Remote) Push(image, imageRoot string) error {
-  remoteKeys,err := remote.repoKeys("")
+  remoteKeys, err := remote.repoKeys("")
   if err != nil {
     return err
   }
 
-  localKeys,err := remote.localKeys(imageRoot)
+  localKeys, err := remote.localKeys(imageRoot)
   if err != nil {
     return err
   }
@@ -78,8 +101,8 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
     fmt.Println("   s3 name", name, "etag", key.ETag)
   }
 
-  for key,localKey := range localKeys {
-    if remoteKey,ok := remoteKeys[key]; !ok || remoteKey.ETag != localKey.ETag {
+  for key, localKey := range localKeys {
+    if remoteKey, ok := remoteKeys[key]; !ok || remoteKey.ETag != localKey.ETag {
       fmt.Println("want to push", key)
 
       if err := remote.putFile(imageRoot, localKey.Key); err != nil {
@@ -91,11 +114,9 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
   return nil
 }
 
-
-
 func (remote *S3Remote) PullImageId(id, dst string) error {
-  rootKey := "/images/"+id
-  imageKeys,err := remote.repoKeys(rootKey)
+  rootKey := "/images/" + id
+  imageKeys, err := remote.repoKeys(rootKey)
   if err != nil {
     return err
   }
@@ -110,8 +131,8 @@ func (remote *S3Remote) ParseTag(repo, tag string) (string, error) {
 
   fmt.Println("tagfile", remote.TagFilePath(repo, tag))
 
-  file,err := bucket.Get(remote.TagFilePath(repo, tag))
-  if s3err,ok := err.(*s3.Error); ok && s3err.StatusCode == 404 {
+  file, err := bucket.Get(remote.TagFilePath(repo, tag))
+  if s3err, ok := err.(*s3.Error); ok && s3err.StatusCode == 404 {
     // doesn't exist yet, deal with it
     return "", nil
   } else if err != nil {
@@ -130,13 +151,13 @@ func (remote *S3Remote) ResolveImageNameToId(image string) (string, error) {
 }
 
 func (remote *S3Remote) ImageFullId(name string) (string, error) {
-  remoteKeys,err := remote.repoKeys("/images")
+  remoteKeys, err := remote.repoKeys("/images")
   if err != nil {
-    return "",err
+    return "", err
   }
 
-  for key,_ := range remoteKeys {
-    parts := strings.Split(key,"/")
+  for key, _ := range remoteKeys {
+    parts := strings.Split(key, "/")
     if strings.HasPrefix(name, parts[0]) {
       return parts[0], nil
     }
@@ -145,18 +166,16 @@ func (remote *S3Remote) ImageFullId(name string) (string, error) {
   return "", ErrNoSuchImage
 }
 
-
 func (remote *S3Remote) WalkImages(id string, walker ImageWalkFn) error {
   return WalkImages(remote, id, walker)
 }
-
 
 func (remote *S3Remote) ImageMetadata(id string) (client.Image, error) {
   jsonPath := path.Join(remote.imagePath(id), "json")
   image := client.Image{}
 
-  imageJson,err := remote.getBucket().Get(jsonPath)
-  if s3err,ok := err.(*s3.Error); ok && s3err.StatusCode == 404 {
+  imageJson, err := remote.getBucket().Get(jsonPath)
+  if s3err, ok := err.(*s3.Error); ok && s3err.StatusCode == 404 {
     // doesn't exist yet, deal with it
     return image, ErrNoSuchImage
   } else if err != nil {
@@ -170,28 +189,21 @@ func (remote *S3Remote) ImageMetadata(id string) (client.Image, error) {
   return image, nil
 }
 
-
-func (remote *S3Remote) getBucket() (*s3.Bucket) {
+func (remote *S3Remote) getBucket() *s3.Bucket {
   // memoise?
   return remote.client.Bucket(remote.BucketName)
 }
-
 
 type S3Bucket struct {
   Name string
 }
 
-
-
-
-
-
 func (remote *S3Remote) repoKeys(prefix string) (map[string]s3.Key, error) {
   repoKeys := make(map[string]s3.Key)
 
-  cnt,err := remote.getBucket().GetBucketContentsWithPrefix(remote.KeyPrefix + prefix)
+  cnt, err := remote.getBucket().GetBucketContentsWithPrefix(remote.KeyPrefix + prefix)
   if err != nil {
-    return repoKeys,err
+    return repoKeys, err
   }
 
   for name, key := range *cnt {
@@ -205,7 +217,6 @@ func (remote *S3Remote) repoKeys(prefix string) (map[string]s3.Key, error) {
   return repoKeys, nil
 }
 
-
 func (remote *S3Remote) localKeys(root string) (map[string]s3.Key, error) {
   localKeys := make(map[string]s3.Key)
 
@@ -218,7 +229,7 @@ func (remote *S3Remote) localKeys(root string) (map[string]s3.Key, error) {
       return nil
     }
 
-    sum,err := md5File(path)
+    sum, err := md5File(path)
     if err != nil {
       return err
     }
@@ -226,7 +237,7 @@ func (remote *S3Remote) localKeys(root string) (map[string]s3.Key, error) {
     key := strings.TrimPrefix(path, root)
 
     localKeys[key] = s3.Key{
-      Key: key,
+      Key:  key,
       ETag: sum,
     }
 
@@ -256,23 +267,21 @@ func md5File(path string) (string, error) {
   return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
-
 func (remote *S3Remote) remoteKey(key string) string {
   return path.Join(remote.KeyPrefix, key)
 }
-
 
 func (remote *S3Remote) putFile(imageRoot, key string) error {
   path := filepath.Join(imageRoot, key)
   key = remote.remoteKey(key)
 
-  f,err := os.Open(path)
+  f, err := os.Open(path)
   if err != nil {
     return err
   }
   defer f.Close()
 
-  finfo,err := os.Stat(path)
+  finfo, err := os.Stat(path)
   if err != nil {
     return err
   }
@@ -281,10 +290,9 @@ func (remote *S3Remote) putFile(imageRoot, key string) error {
   return remote.getBucket().PutReader(key, buff, finfo.Size(), "application/octet-stream", s3.Private)
 }
 
-
 func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys map[string]s3.Key) error {
-  for key,_ := range imageKeys {
-    relKey := strings.TrimPrefix(key,rootKey)
+  for key, _ := range imageKeys {
+    relKey := strings.TrimPrefix(key, rootKey)
     err := remote.getFile(filepath.Join(dst, relKey), key)
     if err != nil {
       return err
@@ -294,12 +302,11 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys map[string]s3.Ke
   return nil
 }
 
-
 func (remote *S3Remote) getFile(dst, key string) error {
   key = path.Join(remote.KeyPrefix, key)
   fmt.Println("getting", key, "to", dst)
 
-  from,err := remote.getBucket().GetReader(key)
+  from, err := remote.getBucket().GetReader(key)
   if err != nil {
     return err
   }
@@ -310,7 +317,7 @@ func (remote *S3Remote) getFile(dst, key string) error {
     return err
   }
 
-  to,err := os.Create(dst)
+  to, err := os.Create(dst)
   if err != nil {
     return err
   }
@@ -320,12 +327,9 @@ func (remote *S3Remote) getFile(dst, key string) error {
   return nil
 }
 
-
-
 func (remote *S3Remote) TagFilePath(repo, tag string) string {
   return filepath.Join(remote.KeyPrefix, "repositories", repo, tag)
 }
-
 
 func (remote *S3Remote) imagePath(id string) string {
   return filepath.Join(remote.KeyPrefix, "images", id)
