@@ -66,18 +66,30 @@ func (cli *DogestryCli) preparePullImage(fromId, imageRoot string, r remote.Remo
 
     _, err = cli.client.InspectImage(id)
     if err == client.ErrNoSuchImage {
-      return pullImage(id, imageRoot, r)
+      return pullImage(id, filepath.Join(imageRoot, id), r)
     } else {
       return remote.BreakWalk
     }
   })
 }
 
-func pullImage(id, imageRoot string, r remote.Remote) error {
-  // TODO decompress
-  // TODO turn imageRoot into explicit destination path
-  r.PullImageId(id, imageRoot)
+func pullImage(id, dst string, r remote.Remote) error {
+  r.PullImageId(id, dst)
+  return processPulled(id, dst)
 }
+
+
+func processImage(id, dst string) error {
+  layerFile := filepath.Join(dst+"layer.tar")
+  compressedLayerFile := filepath.Join(dst+"layer.tar.lz4")
+
+  if _,err := os.Stat(compressedLayerFile); os.IsExist(err) {
+    return exec.Command("./lz4", "-d", compressedLayerFile, layerFile).Run()
+  }
+
+  return nil
+}
+
 
 func prepareRepositories(image, imageRoot string, r remote.Remote) error {
   repoName, repoTag := remote.NormaliseImageName(image)

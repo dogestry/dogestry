@@ -31,52 +31,42 @@ func (remote *LocalRemote) Desc() string {
   return fmt.Sprintf("local(%s)", remote.Path)
 }
 
+// push all of imageRoot to the remote
 func (remote *LocalRemote) Push(image, imageRoot string) error {
   log.Println("pushing local", remote.Url.Path)
 
   return remote.rsyncTo(imageRoot, "")
 }
 
-// pull image into imageRoot
-// XXX imageRoot should be the explicit destination path
-func (remote *LocalRemote) PullImageId(id, imageRoot string) error {
-  log.Println("pushing local", remote.Url.Path)
+// pull image with id into dst
+func (remote *LocalRemote) PullImageId(id, dst string) error {
+  log.Println("pulling local", "images/"+id, "->", dst)
 
-  return remote.rsyncFrom("images/"+id, id)
+  return remote.rsyncFrom("images/"+id, dst)
 }
 
-func (remote *LocalRemote) ResolveImageNameToId(image string) (string, error) {
-  fmt.Println("hi resolving")
 
-  // first, try the repos
-  repoName, repoTag := NormaliseImageName(image)
-  if id, err := remote.ParseTag(repoName, repoTag); err != nil {
-    return "", err
-  } else if id != "" {
-    return id, nil
-  }
 
-  // ok, no repo
-  //
+func (remote *LocalRemote) ImageFullId(id string) (string,error) {
   // look for an image
   imagesRoot := filepath.Join(filepath.Clean(remote.Url.Path), "images")
   file, err := os.Open(imagesRoot)
   if err != nil {
-    return "", err
+    return "",err
   }
 
   names, err := file.Readdirnames(-1)
   if err != nil {
-    return "", err
+    return "",err
   }
 
   for _, name := range names {
-    if strings.HasPrefix(name, image) {
-      return name, nil
+    if strings.HasPrefix(name, id) {
+      return name,nil
     }
   }
 
-  return "", fmt.Errorf("no image '%s' found on %s", image, remote.Desc())
+  return "",nil
 }
 
 func (remote *LocalRemote) WalkImages(id string, walker ImageWalkFn) error {
