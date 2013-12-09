@@ -26,17 +26,25 @@ func (cli *DogestryCli) CmdS3(args ...string) error {
 
   fmt.Println("remote: ", r.Desc())
 
-  repoName, repoTag := remote.NormaliseImageName(cmd.Arg(1))
-  id, err := r.ParseTag(repoName, repoTag)
+
+  id, err := remote.ResolveImageNameToId(r,cmd.Arg(1))
   if err != nil {
     return err
   }
+
   fmt.Println("id", id)
 
-  err = r.Push(cmd.Arg(1), "/tmp/doge")
-  if err != nil {
-    return err
-  }
+  //repoName, repoTag := remote.NormaliseImageName(cmd.Arg(1))
+  //id, err := r.ParseTag(repoName, repoTag)
+  //if err != nil {
+    //return err
+  //}
+  //fmt.Println("id", id)
+
+  //err = r.Push(cmd.Arg(1), "/tmp/doge")
+  //if err != nil {
+    //return err
+  //}
 
   return nil
 }

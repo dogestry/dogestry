@@ -66,7 +66,7 @@ func (remote *LocalRemote) ImageFullId(id string) (string,error) {
     }
   }
 
-  return "",nil
+  return "",ErrNoSuchImage
 }
 
 func (remote *LocalRemote) WalkImages(id string, walker ImageWalkFn) error {

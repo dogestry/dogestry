@@ -125,8 +125,21 @@ func (remote *S3Remote) ParseTag(repo, tag string) (string, error) {
   return string(file), nil
 }
 
+
 func (remote *S3Remote) ImageFullId(name string) (string, error) {
-  return "", nil
+  remoteKeys,err := remote.repoKeys("/images")
+  if err != nil {
+    return "",err
+  }
+
+  for key,_ := range remoteKeys {
+    parts := strings.Split(key,"/")
+    if strings.HasPrefix(name, parts[0]) {
+      return parts[0], nil
+    }
+  }
+
+  return "", ErrNoSuchImage
 }
 
 
