@@ -58,7 +58,7 @@ func (remote *S3Remote) Desc() string {
 }
 
 func (remote *S3Remote) Push(image, imageRoot string) error {
-  remoteKeys,err := remote.repoKeys()
+  remoteKeys,err := remote.repoKeys("")
   if err != nil {
     return err
   }
@@ -92,17 +92,28 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 
 
 func (remote *S3Remote) PullImageId(id, imageRoot string) error {
+  imageKeys,err := remote.repoKeys("/images/"+id)
+  if err != nil {
+    return err
+  }
+
+  fmt.Println("imageKeys", imageKeys)
+
   return nil
 }
 
 func (remote *S3Remote) ParseTag(repo, tag string) (string, error) {
   bucket := remote.getBucket()
 
-  file,err := bucket.Get(TagFilePath(repo, tag))
+  fmt.Println("tagfile", remote.TagFilePath(repo, tag))
+
+  file,err := bucket.Get(remote.TagFilePath(repo, tag))
   if s3err,ok := err.(*s3.Error); ok && s3err.StatusCode == 404 {
     // doesn't exist yet, deal with it
     return "", nil
   } else if err != nil {
+
+    fmt.Println("error was", err)
     return "", err
   }
 
@@ -132,15 +143,15 @@ type S3Bucket struct {
 }
 
 
-func TagFilePath(repo, tag string) string {
-  return filepath.Join("repositories", repo, tag)
+func (remote *S3Remote) TagFilePath(repo, tag string) string {
+  return filepath.Join(remote.KeyPrefix, "repositories", repo, tag)
 }
 
 
-func (remote *S3Remote) repoKeys() (map[string]s3.Key, error) {
+func (remote *S3Remote) repoKeys(prefix string) (map[string]s3.Key, error) {
   repoKeys := make(map[string]s3.Key)
 
-  cnt,err := remote.getBucket().GetBucketContentsWithPrefix(remote.KeyPrefix)
+  cnt,err := remote.getBucket().GetBucketContentsWithPrefix(remote.KeyPrefix + prefix)
   if err != nil {
     return repoKeys,err
   }
@@ -158,7 +169,7 @@ func (remote *S3Remote) repoKeys() (map[string]s3.Key, error) {
 
 
 func (remote *S3Remote) localKeys(root string) (map[string]s3.Key, error) {
-  repoKeys := make(map[string]s3.Key)
+  localKeys := make(map[string]s3.Key)
 
   if root[len(root)-1] != '/' {
     root = root + "/"
@@ -176,7 +187,7 @@ func (remote *S3Remote) localKeys(root string) (map[string]s3.Key, error) {
 
     key := strings.TrimPrefix(path, root)
 
-    repoKeys[key] = s3.Key{
+    localKeys[key] = s3.Key{
       Key: key,
       ETag: sum,
     }
@@ -184,11 +195,12 @@ func (remote *S3Remote) localKeys(root string) (map[string]s3.Key, error) {
     return nil
   })
 
+  // XXX hmmm
   if err != nil {
-    return repoKeys, nil
+    return localKeys, nil
   }
 
-  return repoKeys, nil
+  return localKeys, nil
 }
 
 func md5File(path string) (string, error) {
