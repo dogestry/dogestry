@@ -45,28 +45,26 @@ func (remote *LocalRemote) PullImageId(id, dst string) error {
   return remote.rsyncFrom("images/"+id, dst)
 }
 
-
-
-func (remote *LocalRemote) ImageFullId(id string) (string,error) {
+func (remote *LocalRemote) ImageFullId(id string) (string, error) {
   // look for an image
   imagesRoot := filepath.Join(filepath.Clean(remote.Url.Path), "images")
   file, err := os.Open(imagesRoot)
   if err != nil {
-    return "",err
+    return "", err
   }
 
   names, err := file.Readdirnames(-1)
   if err != nil {
-    return "",err
+    return "", err
   }
 
   for _, name := range names {
     if strings.HasPrefix(name, id) {
-      return name,nil
+      return name, nil
     }
   }
 
-  return "",ErrNoSuchImage
+  return "", ErrNoSuchImage
 }
 
 func (remote *LocalRemote) WalkImages(id string, walker ImageWalkFn) error {

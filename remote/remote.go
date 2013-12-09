@@ -32,7 +32,7 @@ type Remote interface {
   // map a ref-like to id. "ref-like" could be a ref or an id.
   ResolveImageNameToId(image string) (string, error)
 
-  ImageFullId(id string) (string,error)
+  ImageFullId(id string) (string, error)
 
   ImageMetadata(id string) (client.Image, error)
 
@@ -82,8 +82,6 @@ func NormaliseImageName(image string) (string, string) {
   }
 }
 
-
-
 func ResolveImageNameToId(remote Remote, image string) (string, error) {
   fmt.Println("hi resolving")
 
@@ -95,9 +93,8 @@ func ResolveImageNameToId(remote Remote, image string) (string, error) {
     return id, nil
   }
 
-
   // ok, no repo, search the images:
-  fullId,err := remote.ImageFullId(image)
+  fullId, err := remote.ImageFullId(image)
   if err != nil {
     return "", err
   } else if fullId != "" {
@@ -106,8 +103,6 @@ func ResolveImageNameToId(remote Remote, image string) (string, error) {
 
   return "", ErrNoSuchImage
 }
-
-
 
 func WalkImages(remote Remote, id string, walker ImageWalkFn) error {
   if id == "" {
