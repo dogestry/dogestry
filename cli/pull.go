@@ -130,6 +130,16 @@ func prepareRepositories(image, imageRoot string, r remote.Remote) error {
 // stream the tarball into docker
 // its easier here to use tar command, but it'd be neater to mirror Push's approach
 func (cli *DogestryCli) sendTar(imageRoot string) error {
+  notExist,err := dirNotExistOrEmpty(filepath.Join(imageRoot,"images"))
+  if err != nil {
+    return err
+  }
+  if notExist {
+    fmt.Println("no images to send to docker")
+    return nil
+  }
+
+
   cmd := exec.Command("/bin/tar", "cvf", "-", ".")
   cmd.Dir = imageRoot
   defer cmd.Wait()
@@ -145,4 +155,29 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 
   fmt.Println("kicking off post")
   return cli.client.PostImageTarball(stdout)
+}
+
+func dirNotExistOrEmpty(path string) (bool,error) {
+  imagesDir, err := os.Open(path)
+  if err != nil {
+    // no images
+    if os.IsNotExist(err) {
+      return true,nil
+    } else {
+      return false,err
+    }
+  }
+  defer imagesDir.Close()
+
+  names, err := imagesDir.Readdirnames(-1)
+  if err != nil {
+    return false,err
+  }
+
+
+  if len(names) <= 0 {
+    return true,nil
+  }
+
+  return false, nil
 }
