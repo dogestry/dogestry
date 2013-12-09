@@ -10,7 +10,6 @@ import (
   "github.com/lachie/goamz/s3"
 
   "fmt"
-  "net/http"
   "net/url"
   "path"
   "path/filepath"

@@ -16,8 +16,6 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
     return nil
   }
 
-  fmt.Println("okay, pulling", args)
-
   if len(cmd.Args()) < 2 {
     return fmt.Errorf("Error: IMAGE and REMOTE not specified")
   }
@@ -34,12 +32,15 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
     return err
   }
 
+  fmt.Println("remote", r.Desc())
+
+  fmt.Println("resolving image id")
   id, err := r.ResolveImageNameToId(image)
   if err != nil {
     return err
   }
 
-  fmt.Println("root id", id)
+  fmt.Printf("image=%s resolved on remote id=%s\n", image, client.TruncateID(id))
 
   fmt.Println("preparing images")
   if err := cli.preparePullImage(id, imageRoot, r); err != nil {
@@ -51,6 +52,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
     return err
   }
 
+  fmt.Println("sending tar to docker")
   if err := cli.sendTar(imageRoot); err != nil {
     return err
   }
@@ -60,7 +62,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 
 func (cli *DogestryCli) preparePullImage(fromId, imageRoot string, r remote.Remote) error {
   return r.WalkImages(fromId, func(id string, image client.Image, err error) error {
-    fmt.Println("id", id, "image", image.ID)
+    fmt.Printf("examining id=%s on remote\n", client.TruncateID(id))
     if err != nil {
       fmt.Println("err", err)
       return err
@@ -70,6 +72,7 @@ func (cli *DogestryCli) preparePullImage(fromId, imageRoot string, r remote.Remo
     if err == client.ErrNoSuchImage {
       return pullImage(id, filepath.Join(imageRoot, id), r)
     } else {
+      fmt.Printf("docker already has id=%s, stopping\n", client.TruncateID(id))
       return remote.BreakWalk
     }
   })

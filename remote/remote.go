@@ -60,7 +60,6 @@ func NewRemote(remote string) (Remote, error) {
 }
 
 func normaliseURL(remoteUrl string) (*url.URL, error) {
-  fmt.Println("url in", remoteUrl)
   u, err := url.Parse(remoteUrl)
   if err != nil {
     return nil, ErrInvalidRemote
@@ -83,8 +82,6 @@ func NormaliseImageName(image string) (string, string) {
 }
 
 func ResolveImageNameToId(remote Remote, image string) (string, error) {
-  fmt.Println("hi resolving")
-
   // first, try the repos
   repoName, repoTag := NormaliseImageName(image)
   if id, err := remote.ParseTag(repoName, repoTag); err != nil {
@@ -104,6 +101,13 @@ func ResolveImageNameToId(remote Remote, image string) (string, error) {
   return "", ErrNoSuchImage
 }
 
+// Common implementation of walking a remote's images
+//
+// Starting at id, follow the ancestry tree, calling walker for each image found.
+// Walker can abort the walk by returning an error.
+// - BreakWalk - the walk stops and WalkImages returns nil (no error)
+// - other error - the walk stop and WalkImages returns the error.
+// - nil - the walk continues
 func WalkImages(remote Remote, id string, walker ImageWalkFn) error {
   if id == "" {
     return nil

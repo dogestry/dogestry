@@ -13,7 +13,8 @@ import (
 	"strings"
 )
 
-// snatched from docker
+// Note: snatched from docker
+
 func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
 	methodName := "Cmd" + strings.ToUpper(name[:1]) + strings.ToLower(name[1:])
 	method := reflect.ValueOf(cli).MethodByName(methodName)
@@ -63,6 +64,8 @@ func (cli *DogestryCli) Subcmd(name, signature, description string) *flag.FlagSe
 	return flags
 }
 
+// Creates and returns temporary work dir
+// This dir is cleaned up on exit
 func (cli *DogestryCli) TempDir() string {
 	if cli.tempDir == "" {
 		if tempDir, err := ioutil.TempDir("", "dogestry"); err != nil {
@@ -75,6 +78,7 @@ func (cli *DogestryCli) TempDir() string {
 	return cli.tempDir
 }
 
+// Creates and returns a workdir under TempDir
 func (cli *DogestryCli) WorkDir(suffix string) (string, error) {
 	path := filepath.Join(cli.TempDir(), suffix)
 
@@ -85,8 +89,8 @@ func (cli *DogestryCli) WorkDir(suffix string) (string, error) {
 	return path, nil
 }
 
+// clean up the tempDir
 func (cli *DogestryCli) Cleanup() {
-	fmt.Println("cleaning up", cli.tempDir)
 	if cli.tempDir != "" {
 		if err := os.RemoveAll(cli.tempDir); err != nil {
 			log.Println(err)
