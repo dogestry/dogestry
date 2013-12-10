@@ -31,6 +31,7 @@ type DogestryCli struct {
 	err     io.Writer
 	tempDir string
   Config  config.Config
+  compressor compressor.Compressor
 }
 
 
@@ -39,6 +40,7 @@ func NewDogestryCli(client *client.Client, config config.Config) *DogestryCli {
     Config: config,
 		client: *client,
 		err:    os.Stderr,
+    compressor: compressor.NewCompressor(config)
 	}
 }
 

@@ -16,6 +16,7 @@ type S3Config struct {
 type Config struct {
   Remote map[string]*RemoteConfig
   S3 S3Config
+  Compressor CompressorConfig
 }
 
 
