@@ -8,15 +8,20 @@ import (
 	"log"
 )
 
+
+
+
 func main() {
+  flConfigFile := flag.String("config", "./dogestry.cfg", "the dogestry config file (defaults to 'dogestry.cfg' in the current directory)")
 	flag.Parse()
+
 
 	client, err := client.NewClient("unix:///var/run/docker.sock")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err = cli.ParseCommands(client, flag.Args()...); err != nil {
+	if err = cli.ParseCommands(*flConfigFile, client, flag.Args()...); err != nil {
 		log.Println("err")
 		log.Fatal(err)
 	}
