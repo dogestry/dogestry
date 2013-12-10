@@ -33,7 +33,7 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
     return err
   }
 
-  remote, err := remote.NewRemote(remoteDef)
+  remote, err := remote.NewRemote(remoteDef, cli.Config)
   if err != nil {
     return err
   }

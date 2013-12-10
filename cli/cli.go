@@ -2,6 +2,8 @@ package cli
 
 import (
 	"dogestry/client"
+	"dogestry/config"
+
 	"flag"
 	"fmt"
 	"io"
@@ -11,7 +13,25 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+
 )
+
+
+type DogestryCli struct {
+	client  client.Client
+	err     io.Writer
+	tempDir string
+  Config  config.Config
+}
+
+
+func NewDogestryCli(client *client.Client, config config.Config) *DogestryCli {
+	return &DogestryCli{
+    Config: config,
+		client: *client,
+		err:    os.Stderr,
+	}
+}
 
 // Note: snatched from docker
 
@@ -24,8 +44,14 @@ func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
 	return method.Interface().(func(...string) error), true
 }
 
-func ParseCommands(client *client.Client, args ...string) error {
-	cli := NewDogestryCli(client)
+func ParseCommands(configFilePath string, client *client.Client, args ...string) error {
+
+  config,err := config.ParseConfig(configFilePath)
+  if err != nil {
+    return err
+  }
+
+	cli := NewDogestryCli(client, config)
 	defer cli.Cleanup()
 
 	if len(args) > 0 {
@@ -98,15 +124,3 @@ func (cli *DogestryCli) Cleanup() {
 	}
 }
 
-func NewDogestryCli(client *client.Client) *DogestryCli {
-	return &DogestryCli{
-		client: *client,
-		err:    os.Stderr,
-	}
-}
-
-type DogestryCli struct {
-	client  client.Client
-	err     io.Writer
-	tempDir string
-}

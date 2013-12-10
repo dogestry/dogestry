@@ -27,7 +27,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
   if err != nil {
     return err
   }
-  r, err := remote.NewRemote(remoteDef)
+  r, err := remote.NewRemote(remoteDef, cli.Config)
   if err != nil {
     return err
   }

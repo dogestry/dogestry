@@ -19,7 +19,7 @@ func (cli *DogestryCli) CmdRemote(args ...string) error {
 
 	remoteDef := cmd.Arg(0)
 
-	r, err := remote.NewRemote(remoteDef)
+	r, err := remote.NewRemote(remoteDef, cli.Config)
 	if err != nil {
 		return err
 	}
