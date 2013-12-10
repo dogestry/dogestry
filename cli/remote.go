@@ -11,8 +11,6 @@ func (cli *DogestryCli) CmdRemote(args ...string) error {
 		return nil
 	}
 
-	fmt.Println("okay, remote", args)
-
 	if len(cmd.Args()) < 1 {
 		return fmt.Errorf("Error: REMOTE not specified")
 	}

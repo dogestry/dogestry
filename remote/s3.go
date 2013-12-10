@@ -62,6 +62,7 @@ func newS3Client(config RemoteConfig) (*s3.S3, error) {
   if len(regQuery) > 0 && regQuery[0] != "" {
     regionName = regQuery[0]
   } else {
+    // TODO get default region from config
     regionName = S3DefaultRegion
   }
 

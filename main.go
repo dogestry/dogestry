@@ -25,6 +25,4 @@ func main() {
 		log.Println("err")
 		log.Fatal(err)
 	}
-
-	log.Println("ok, done")
 }

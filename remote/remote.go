@@ -60,8 +60,6 @@ func NewRemote(remote string, config config.Config) (Remote, error) {
     return nil, err
   }
 
-  fmt.Println("remcfg", remoteConfig)
-
   switch remoteConfig.Kind {
   case "local":
     return NewLocalRemote(remoteConfig)
