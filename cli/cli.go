@@ -17,6 +17,15 @@ import (
 )
 
 
+var (
+  DefaultConfigFilePath = "./dogestry.cfg"
+  DefaultConfig = config.Config{
+    Remote: make(map[string]*config.RemoteConfig),
+  }
+)
+
+
+
 type DogestryCli struct {
 	client  client.Client
 	err     io.Writer
@@ -45,8 +54,7 @@ func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
 }
 
 func ParseCommands(configFilePath string, client *client.Client, args ...string) error {
-
-  config,err := config.ParseConfig(configFilePath)
+  config,err := parseConfig(configFilePath)
   if err != nil {
     return err
   }
@@ -64,6 +72,23 @@ func ParseCommands(configFilePath string, client *client.Client, args ...string)
 	}
 	return cli.CmdHelp(args...)
 }
+
+
+func parseConfig(configFilePath string) (cfg config.Config,err error) {
+  // no config file was specified
+  if configFilePath == "" {
+    // if default config exists use it
+    if _,err := os.Stat(DefaultConfigFilePath); !os.IsNotExist(err) {
+      configFilePath = DefaultConfigFilePath
+    } else {
+      fmt.Fprintln(os.Stderr, "Warning: no config file found, using default config")
+      return DefaultConfig, nil
+    }
+  }
+
+  return config.ParseConfig(configFilePath)
+}
+
 
 func (cli *DogestryCli) CmdHelp(args ...string) error {
 	if len(args) > 0 {

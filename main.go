@@ -12,7 +12,7 @@ import (
 
 
 func main() {
-  flConfigFile := flag.String("config", "./dogestry.cfg", "the dogestry config file (defaults to 'dogestry.cfg' in the current directory)")
+  flConfigFile := flag.String("config", "", "the dogestry config file (defaults to 'dogestry.cfg' in the current directory)")
 	flag.Parse()
 
 
