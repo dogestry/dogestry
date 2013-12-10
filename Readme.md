@@ -28,6 +28,21 @@ Specifically, using docker relies on the central registry being up.
 * `index.docker.io` is unreachable for some reason.
 * bummer.
 
+
+### with dogestry
+
+* fresh ec2 machine is provisioned from an AMI with docker preinstalled
+* dogestry pull myapp:20131210 s3://myregistry.mycompany.com/
+  * s3 credentials are automatically discovered via IAM and the metadata service
+* docker run myapp:20131210
+
+or for an update
+
+* dogestry pull myapp:20131213 s3://myregistry.mycompany.com/
+* docker run myapp:20131213
+* (kill the old container)
+
+
 ### other problems
 
 * Simple but secure docker-registry setup is complex; I can't it working with basic auth.
