@@ -1,26 +1,28 @@
 package remote
 
 import (
+  "github.com/lachie/goamz/aws"
+  "github.com/lachie/goamz/s3"
+  "dogestry/utils"
+
   "bufio"
   "crypto/md5"
   "dogestry/client"
   "encoding/hex"
   "encoding/json"
-  "github.com/lachie/goamz/aws"
-  "github.com/lachie/goamz/s3"
+
 
   "fmt"
-  "net/url"
   "path"
   "path/filepath"
   "strings"
-  "dogestry/utils"
 
   "io"
   "os"
 )
 
 type S3Remote struct {
+  config RemoteConfig
   BucketName string
   Bucket     *s3.Bucket
   KeyPrefix  string
@@ -31,15 +33,17 @@ var (
   S3DefaultRegion = "us-west-2"
 )
 
-func NewS3Remote(url url.URL) (*S3Remote, error) {
-  s3, err := newS3Client(url)
+func NewS3Remote(config RemoteConfig) (*S3Remote, error) {
+  s3, err := newS3Client(config)
   if err != nil {
     return &S3Remote{}, nil
   }
 
+  url := config.Url
   prefix := strings.TrimPrefix(url.Path, "/")
 
   return &S3Remote{
+    config: config,
     BucketName: url.Host,
     KeyPrefix:  prefix,
     client:     s3,
@@ -47,14 +51,14 @@ func NewS3Remote(url url.URL) (*S3Remote, error) {
 }
 
 // create a new s3 client from the url
-func newS3Client(url url.URL) (*s3.S3, error) {
-  auth, err := getS3Auth()
+func newS3Client(config RemoteConfig) (*s3.S3, error) {
+  auth, err := getS3Auth(config)
   if err != nil {
     return &s3.S3{}, err
   }
 
   var regionName string
-  regQuery := url.Query()["region"]
+  regQuery := config.Url.Query()["region"]
   if len(regQuery) > 0 && regQuery[0] != "" {
     regionName = regQuery[0]
   } else {
@@ -67,11 +71,9 @@ func newS3Client(url url.URL) (*s3.S3, error) {
 }
 
 // determine the s3 auth from various sources
-func getS3Auth() (aws.Auth, error) {
-  //filepath.join(os.Getenv("HOME"), ".ec2", "")
-  //os.Stat(
-
-  return aws.GetAuth("", "")
+func getS3Auth(config RemoteConfig) (aws.Auth, error) {
+  s3config := config.Config.S3
+  return aws.GetAuth(s3config.Access_Key_Id, s3config.Secret_Key)
 }
 
 // Remote: describe the remote

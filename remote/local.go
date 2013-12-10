@@ -2,6 +2,7 @@ package remote
 
 import (
   "dogestry/client"
+
   "encoding/json"
   "fmt"
   "io/ioutil"
@@ -14,16 +15,18 @@ import (
 )
 
 type LocalRemote struct {
+  config RemoteConfig
   Url  url.URL
   Path string
 }
 
-func NewLocalRemote(url url.URL) (*LocalRemote, error) {
+func NewLocalRemote(config RemoteConfig) (*LocalRemote, error) {
   // TODO validate
 
   return &LocalRemote{
-    Url:  url,
-    Path: url.Path,
+    config: config,
+    Url:  config.Url,
+    Path: config.Url.Path,
   }, nil
 }
 
