@@ -13,6 +13,10 @@ type S3Config struct {
   Secret_Key string
 }
 
+type CompressorConfig struct {
+  Lz4 string
+}
+
 type Config struct {
   Remote map[string]*RemoteConfig
   S3 S3Config

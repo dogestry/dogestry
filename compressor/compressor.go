@@ -4,9 +4,20 @@ import (
   "os/exec"
 )
 
-type Compressor struct {}
+type Compressor struct {
+  lz4Path string
+}
 
-func NewCompressor(config config.Config) Compressor {
+
+func NewCompressor(config config.Config) (Compressor, error) {
+  path,err := filepath.LookPath(config.Compressor.Lz4)
+  if err != nil {
+    return Compressor{}, err
+  }
+
+  return Compressor{
+    lz4Path: path,
+  }
 }
 
 
@@ -15,7 +26,7 @@ func NewCompressor(config config.Config) Compressor {
 // would use go version if we could (needs a streaming version)
 // lz4 is low compression, but extremely fast
 func (cmp *Compressor) compress(path string) error {
-  err := exec.Command("./lz4", path, path+".lz4").Run()
+  err := exec.Command(cmp.lz4Path, path, path+".lz4").Run()
   if err != nil {
     return err
   }
@@ -24,19 +35,16 @@ func (cmp *Compressor) compress(path string) error {
 }
 
 
-decompress(path string) error {
-
-compressedLayerFile := filepath.Join(dst, "layer.tar.lz4")
-  layerFile := filepath.Join(dst, "layer.tar")
+func (cmp *Compressor) decompress(path string) error {
+  layerFile := filepath.Join(filepath.Dir(path), )
 
   if _, err := os.Stat(compressedLayerFile); !os.IsNotExist(err) {
     fmt.Println("exists?", compressedLayerFile)
-    cmd := exec.Command("./lz4", "-d", "-f", compressedLayerFile, layerFile)
+    cmd := exec.Command(cmp.lz4Path, "-d", "-f", compressedLayerFile, layerFile)
     if err := cmd.Run(); err != nil {
       return err
     }
 
     return os.Remove(compressedLayerFile)
   }
-
-
+}

@@ -21,6 +21,9 @@ var (
   DefaultConfigFilePath = "./dogestry.cfg"
   DefaultConfig = config.Config{
     Remote: make(map[string]*config.RemoteConfig),
+    Compressor: CompressorConfig{
+      Lz4: "lz4",
+    }
   }
 )
 
