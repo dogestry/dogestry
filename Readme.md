@@ -31,6 +31,7 @@ Specifically, using docker relies on the central registry being up.
 ### other problems
 
 * Simple but secure docker-registry setup is complex; I can't it working with basic auth.
+I'm not sure its possible with the way docker-registry uses the `Authorization` HTTP header.
 
 ## solution
 
@@ -51,11 +52,11 @@ Dumb transport, synchronises with a directory on the same machine using normal f
 
 #### s3 remote
 
-Dumb transport, synchronises with s3 using the s3 api.
+Dumb transport, synchronises with an s3 bucket using the s3 api.
 
 #### registry remote (not implemented)
 
-Smart transport, synchronises with the docker-registry api.
+Smart transport, synchronises with an instance of docker-registry.
 
 ### portable repository format
 
@@ -71,7 +72,7 @@ images/5d4e24b3d968cc6413a81f6f49566a0db80be401d647ade6d977a9dd9864569f/VERSION
 images/5d4e24b3d968cc6413a81f6f49566a0db80be401d647ade6d977a9dd9864569f/json 
 ```
 
-repositories:
+To better support eventually-consistent remotes using dumb transports (i.e. s3) The repositories json is unrolled into files (like `.git/refs`)
 ```
 repositories/myapp/20131210     (content: 5d4e24b3d968cc6413a81f6f49566a0db80be401d647ade6d977a9dd9864569f)
 repositories/myapp/latest       (content: 5d4e24b3d968cc6413a81f6f49566a0db80be401d647ade6d977a9dd9864569f)
@@ -82,7 +83,7 @@ repositories/myapp/latest       (content: 5d4e24b3d968cc6413a81f6f49566a0db80be4
 * at the very least, I'd like to add a flag to enact the zero external dependency requirement (this could be done with e.g. hacking /etc/hosts, but a docker flag would be neater & more pro).
 * nice to have would be a refinement of `GET /images/<name>/get` to exclude images already on the remote.
 * nice to have would be in-stream de/compression of layer.tar in `GET /images/<name>/get` and `POST /images/load`.
-* best of all would be to integrate some different registry approaches.
+* best of all would be to integrate some different registry approaches into docker.
 
 
 [cap]: https://github.com/capistrano/capistrano
