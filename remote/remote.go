@@ -2,6 +2,7 @@ package remote
 
 import (
   "dogestry/client"
+  "dogestry/config"
   "errors"
   "fmt"
   "net/url"
@@ -10,12 +11,21 @@ import (
 
 var (
   // ErrInvalidRemote is returned when the remote is not a valid.
-  ErrInvalidRemote = errors.New("Invalid endpoint")
+  ErrInvalidRemote = errors.New("Invalid remote")
 
   ErrNoSuchImage = errors.New("No such image")
   ErrNoSuchTag   = errors.New("No such tag")
   BreakWalk      = errors.New("break walk")
 )
+
+
+type RemoteConfig struct {
+  config.RemoteConfig
+  Kind string
+  Config config.Config
+  Url url.URL
+}
+
 
 type ImageWalkFn func(id string, image client.Image, err error) error
 
@@ -43,34 +53,70 @@ type Remote interface {
   Desc() string
 }
 
-func NewRemote(remote string) (Remote, error) {
-  remoteUrl, err := normaliseURL(remote)
+
+func NewRemote(remote string, config config.Config) (Remote, error) {
+  remoteConfig, err := resolveConfig(remote, config)
   if err != nil {
     return nil, err
   }
 
-  switch remoteUrl.Scheme {
+  fmt.Println("remcfg", remoteConfig)
+
+  switch remoteConfig.Kind {
   case "local":
-    return NewLocalRemote(*remoteUrl)
+    return NewLocalRemote(remoteConfig)
   case "s3":
-    return NewS3Remote(*remoteUrl)
+    return NewS3Remote(remoteConfig)
   default:
-    return nil, fmt.Errorf("unknown remote type %s", remoteUrl.Scheme)
+    return nil, fmt.Errorf("unknown remote type '%s'", remoteConfig.Kind)
   }
 }
 
-func normaliseURL(remoteUrl string) (*url.URL, error) {
+
+func resolveConfig(remoteUrl string, config config.Config) (remoteConfig RemoteConfig, err error) {
+  // its a bareword, use it as a lookup key
+  if !strings.Contains(remoteUrl, "/") {
+    return lookupUrlInConfig(remoteUrl, config)
+  }
+
+  // its a url
+  return makeRemoteFromUrl(remoteUrl, config)
+}
+
+
+func lookupUrlInConfig(remoteName string, config config.Config) (remoteConfig RemoteConfig, err error) {
+  remote,ok := config.Remote[remoteName]
+  if !ok {
+    err = fmt.Errorf("no remote '%s' found", remoteName)
+    return
+  }
+
+  return makeRemoteFromUrl(remote.Url, config)
+  // XXX Extra setup can come from here
+}
+
+
+func makeRemoteFromUrl(remoteUrl string, config config.Config) (remoteConfig RemoteConfig, err error) {
+  remoteConfig = RemoteConfig{
+    Config: config,
+  }
+
   u, err := url.Parse(remoteUrl)
   if err != nil {
-    return nil, ErrInvalidRemote
+    err = ErrInvalidRemote
+    return
   }
 
   if u.Scheme == "" {
     u.Scheme = "local"
   }
+  remoteConfig.Url = *u
+  remoteConfig.Kind = u.Scheme
+  remoteConfig.Config = config
 
-  return u, nil
+  return
 }
+
 
 func NormaliseImageName(image string) (string, string) {
   repoParts := strings.Split(image, ":")
