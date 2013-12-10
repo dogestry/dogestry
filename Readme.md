@@ -4,7 +4,7 @@ Proof of concept for simple image storage for docker.
 
 ## thesis
 
-In my organisation docker will be the way for us to move away from (`cap deploy`)[cap]
+In my organisation docker will be the way for us to move away from [`cap deploy`][cap]
 
 * When deploying with `cap`, a window of risk in opened.
 * resource wastage and contention
