@@ -16,7 +16,7 @@ import (
 )
 
 func (cli *DogestryCli) CmdPush(args ...string) error {
-  cmd := cli.Subcmd("push", "IMAGE[:TAG] REMOTE", "push IMAGE to the REMOTE. TAG defaults to 'latest'")
+  cmd := cli.Subcmd("push", "REMOTE IMAGE[:TAG]", "push IMAGE to the REMOTE. TAG defaults to 'latest'")
   if err := cmd.Parse(args); err != nil {
     return nil
   }
@@ -25,8 +25,8 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
     return fmt.Errorf("Error: IMAGE and REMOTE not specified")
   }
 
-  image := cmd.Arg(0)
-  remoteDef := cmd.Arg(1)
+  remoteDef := cmd.Arg(0)
+  image := cmd.Arg(1)
 
   imageRoot, err := cli.WorkDir(image)
   if err != nil {
