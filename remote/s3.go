@@ -292,9 +292,9 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys map[string]s3.Ke
 
 // get a single file from the s3 bucket
 func (remote *S3Remote) getFile(dst, key string) error {
-  key = path.Join(remote.KeyPrefix, key)
+  fullKey := path.Join(remote.KeyPrefix, key)
 
-  from, err := remote.getBucket().GetReader(key)
+  from, err := remote.getBucket().GetReader(fullKey)
   if err != nil {
     return err
   }
@@ -310,8 +310,13 @@ func (remote *S3Remote) getFile(dst, key string) error {
     return err
   }
 
-  io.Copy(to, bufFrom)
-  // TODO check if file exists
+  wrote,err := io.Copy(to, bufFrom)
+  if err != nil {
+    return err
+  }
+
+  fmt.Printf("pulled key %s (%s)\n", key, utils.HumanSize(wrote))
+
   return nil
 }
 

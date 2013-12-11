@@ -55,8 +55,6 @@ func (cmp Compressor) Decompress(path string) error {
   uncompressedPath := strings.TrimSuffix(path, ".lz4")
 
   if _, err := os.Stat(path); !os.IsNotExist(err) {
-    fmt.Println("exists?", path)
-
     cmd := exec.Command(cmp.lz4Path, "-d", "-f", path, uncompressedPath)
     if err := cmd.Run(); err != nil {
       return err
