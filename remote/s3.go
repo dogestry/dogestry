@@ -106,8 +106,8 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
   return nil
 }
 
-func (remote *S3Remote) PullImageId(id, dst string) error {
-  rootKey := "/images/" + id
+func (remote *S3Remote) PullImageId(id ID, dst string) error {
+  rootKey := "/images/" + string(id)
   imageKeys, err := remote.repoKeys(rootKey)
   if err != nil {
     return err
@@ -116,7 +116,7 @@ func (remote *S3Remote) PullImageId(id, dst string) error {
   return remote.getFiles(dst, rootKey, imageKeys)
 }
 
-func (remote *S3Remote) ParseTag(repo, tag string) (string, error) {
+func (remote *S3Remote) ParseTag(repo, tag string) (ID, error) {
   bucket := remote.getBucket()
 
   file, err := bucket.Get(remote.tagFilePath(repo, tag))
@@ -127,14 +127,14 @@ func (remote *S3Remote) ParseTag(repo, tag string) (string, error) {
     return "", err
   }
 
-  return string(file), nil
+  return ID(file), nil
 }
 
-func (remote *S3Remote) ResolveImageNameToId(image string) (string, error) {
+func (remote *S3Remote) ResolveImageNameToId(image string) (ID, error) {
   return ResolveImageNameToId(remote, image)
 }
 
-func (remote *S3Remote) ImageFullId(name string) (string, error) {
+func (remote *S3Remote) ImageFullId(id ID) (ID, error) {
   remoteKeys, err := remote.repoKeys("/images")
   if err != nil {
     return "", err
@@ -142,19 +142,19 @@ func (remote *S3Remote) ImageFullId(name string) (string, error) {
 
   for key, _ := range remoteKeys {
     parts := strings.Split(key, "/")
-    if strings.HasPrefix(name, parts[0]) {
-      return parts[0], nil
+    if strings.HasPrefix(string(id), parts[0]) {
+      return ID(parts[0]), nil
     }
   }
 
   return "", ErrNoSuchImage
 }
 
-func (remote *S3Remote) WalkImages(id string, walker ImageWalkFn) error {
+func (remote *S3Remote) WalkImages(id ID, walker ImageWalkFn) error {
   return WalkImages(remote, id, walker)
 }
 
-func (remote *S3Remote) ImageMetadata(id string) (client.Image, error) {
+func (remote *S3Remote) ImageMetadata(id ID) (client.Image, error) {
   jsonPath := path.Join(remote.imagePath(id), "json")
   image := client.Image{}
 
@@ -326,6 +326,6 @@ func (remote *S3Remote) tagFilePath(repo, tag string) string {
 }
 
 // path to an image dir
-func (remote *S3Remote) imagePath(id string) string {
-  return filepath.Join(remote.KeyPrefix, "images", id)
+func (remote *S3Remote) imagePath(id ID) string {
+  return filepath.Join(remote.KeyPrefix, "images", string(id))
 }

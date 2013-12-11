@@ -42,13 +42,13 @@ func (remote *LocalRemote) Push(image, imageRoot string) error {
 }
 
 // pull image with id into dst
-func (remote *LocalRemote) PullImageId(id, dst string) error {
+func (remote *LocalRemote) PullImageId(id ID, dst string) error {
   log.Println("pulling local", "images/"+id, "->", dst)
 
-  return remote.rsyncFrom("images/"+id, dst)
+  return remote.rsyncFrom("images/"+string(id), dst)
 }
 
-func (remote *LocalRemote) ImageFullId(id string) (string, error) {
+func (remote *LocalRemote) ImageFullId(id ID) (ID, error) {
   // look for an image
   imagesRoot := filepath.Join(filepath.Clean(remote.Url.Path), "images")
   file, err := os.Open(imagesRoot)
@@ -62,27 +62,27 @@ func (remote *LocalRemote) ImageFullId(id string) (string, error) {
   }
 
   for _, name := range names {
-    if strings.HasPrefix(name, id) {
-      return name, nil
+    if strings.HasPrefix(name, string(id)) {
+      return ID(name), nil
     }
   }
 
   return "", ErrNoSuchImage
 }
 
-func (remote *LocalRemote) WalkImages(id string, walker ImageWalkFn) error {
+func (remote *LocalRemote) WalkImages(id ID, walker ImageWalkFn) error {
   return WalkImages(remote, id, walker)
 }
 
-func (remote *LocalRemote) ResolveImageNameToId(image string) (string, error) {
+func (remote *LocalRemote) ResolveImageNameToId(image string) (ID, error) {
   return ResolveImageNameToId(remote, image)
 }
 
-func (remote *LocalRemote) ParseTag(repo, tag string) (string, error) {
+func (remote *LocalRemote) ParseTag(repo, tag string) (ID, error) {
   repoPath := filepath.Join(filepath.Clean(remote.Url.Path), "repositories", repo, tag)
 
   if id, err := ioutil.ReadFile(repoPath); err == nil {
-    return string(id), nil
+    return ID(id), nil
   } else if os.IsNotExist(err) {
     return "", nil
   } else {
@@ -90,7 +90,7 @@ func (remote *LocalRemote) ParseTag(repo, tag string) (string, error) {
   }
 }
 
-func (remote *LocalRemote) ImageMetadata(id string) (client.Image, error) {
+func (remote *LocalRemote) ImageMetadata(id ID) (client.Image, error) {
   image := client.Image{}
 
   imageJson, err := ioutil.ReadFile(filepath.Join(remote.imagePath(id), "json"))
@@ -125,8 +125,8 @@ func (remote *LocalRemote) rsync(src, dst string) error {
   return nil
 }
 
-func (remote *LocalRemote) imagePath(id string) string {
-  return remote.RemotePath("images", id)
+func (remote *LocalRemote) imagePath(id ID) string {
+  return remote.RemotePath("images", string(id))
 }
 
 func (remote *LocalRemote) RemotePath(part ...string) string {

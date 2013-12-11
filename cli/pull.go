@@ -40,7 +40,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
     return err
   }
 
-  fmt.Printf("image '%s' resolved on remote id '%s'\n", image, client.TruncateID(id))
+  fmt.Printf("image '%s' resolved on remote id '%s'\n", image, id.Short())
 
   fmt.Println("preparing images")
   if err := cli.preparePullImage(id, imageRoot, r); err != nil {
@@ -60,25 +60,25 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
   return nil
 }
 
-func (cli *DogestryCli) preparePullImage(fromId, imageRoot string, r remote.Remote) error {
-  return r.WalkImages(fromId, func(id string, image client.Image, err error) error {
-    fmt.Printf("examining id=%s on remote\n", client.TruncateID(id))
+func (cli *DogestryCli) preparePullImage(fromId remote.ID, imageRoot string, r remote.Remote) error {
+  return r.WalkImages(fromId, func(id remote.ID, image client.Image, err error) error {
+    fmt.Printf("examining id '%s' on remote\n", id.Short())
     if err != nil {
       fmt.Println("err", err)
       return err
     }
 
-    _, err = cli.client.InspectImage(id)
+    _, err = cli.client.InspectImage(string(id))
     if err == client.ErrNoSuchImage {
-      return cli.pullImage(id, filepath.Join(imageRoot, id), r)
+      return cli.pullImage(id, filepath.Join(imageRoot, string(id)), r)
     } else {
-      fmt.Printf("docker already has id=%s, stopping\n", client.TruncateID(id))
+      fmt.Printf("docker already has id '%s', stopping\n", id.Short())
       return remote.BreakWalk
     }
   })
 }
 
-func (cli *DogestryCli) pullImage(id, dst string, r remote.Remote) error {
+func (cli *DogestryCli) pullImage(id remote.ID, dst string, r remote.Remote) error {
   err := r.PullImageId(id, dst)
   if err != nil {
     return err
@@ -86,7 +86,7 @@ func (cli *DogestryCli) pullImage(id, dst string, r remote.Remote) error {
   return cli.processPulled(id, dst)
 }
 
-func (cli *DogestryCli) processPulled(id, dst string) error {
+func (cli *DogestryCli) processPulled(id remote.ID, dst string) error {
   compressedLayerFile := filepath.Join(dst, "layer.tar.lz4")
   return cli.compressor.Decompress(compressedLayerFile)
 }
@@ -110,7 +110,7 @@ func prepareRepositories(image, imageRoot string, r remote.Remote) error {
 
   repositories := map[string]Repository{}
   repositories[repoName] = Repository{}
-  repositories[repoName][repoTag] = id
+  repositories[repoName][repoTag] = string(id)
 
   return json.NewEncoder(reposFile).Encode(&repositories)
 }

@@ -27,27 +27,27 @@ type RemoteConfig struct {
 }
 
 
-type ImageWalkFn func(id string, image client.Image, err error) error
+type ImageWalkFn func(id ID, image client.Image, err error) error
 
 type Remote interface {
   // push image and parent images to remote
   Push(image, imageRoot string) error
 
   // pull a single image from the remote
-  PullImageId(id, imageRoot string) error
+  PullImageId(id ID, imageRoot string) error
 
   // map repo:tag to id (like git rev-parse)
-  ParseTag(repo, tag string) (string, error)
+  ParseTag(repo, tag string) (ID, error)
 
   // map a ref-like to id. "ref-like" could be a ref or an id.
-  ResolveImageNameToId(image string) (string, error)
+  ResolveImageNameToId(image string) (ID, error)
 
-  ImageFullId(id string) (string, error)
+  ImageFullId(id ID) (ID, error)
 
-  ImageMetadata(id string) (client.Image, error)
+  ImageMetadata(id ID) (client.Image, error)
 
   // walk the image history on the remote, starting at id
-  WalkImages(id string, walker ImageWalkFn) error
+  WalkImages(id ID, walker ImageWalkFn) error
 
   // describe the remote
   Desc() string
@@ -125,7 +125,7 @@ func NormaliseImageName(image string) (string, string) {
   }
 }
 
-func ResolveImageNameToId(remote Remote, image string) (string, error) {
+func ResolveImageNameToId(remote Remote, image string) (ID, error) {
   // first, try the repos
   repoName, repoTag := NormaliseImageName(image)
   if id, err := remote.ParseTag(repoName, repoTag); err != nil {
@@ -135,7 +135,7 @@ func ResolveImageNameToId(remote Remote, image string) (string, error) {
   }
 
   // ok, no repo, search the images:
-  fullId, err := remote.ImageFullId(image)
+  fullId, err := remote.ImageFullId(ID(image))
   if err != nil {
     return "", err
   } else if fullId != "" {
@@ -152,7 +152,7 @@ func ResolveImageNameToId(remote Remote, image string) (string, error) {
 // - BreakWalk - the walk stops and WalkImages returns nil (no error)
 // - other error - the walk stop and WalkImages returns the error.
 // - nil - the walk continues
-func WalkImages(remote Remote, id string, walker ImageWalkFn) error {
+func WalkImages(remote Remote, id ID, walker ImageWalkFn) error {
   if id == "" {
     return nil
   }
@@ -172,5 +172,5 @@ func WalkImages(remote Remote, id string, walker ImageWalkFn) error {
     return err
   }
 
-  return remote.WalkImages(img.Parent, walker)
+  return remote.WalkImages(ID(img.Parent), walker)
 }
