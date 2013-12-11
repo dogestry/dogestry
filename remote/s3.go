@@ -94,6 +94,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
   }
 
   for key, localKey := range localKeys {
+
     if remoteKey, ok := remoteKeys[key]; !ok || remoteKey.ETag != localKey.ETag {
       fmt.Printf("pushing key %s (%s)\n", key, utils.FileHumanSize(filepath.Join(imageRoot,localKey.Key)))
 
@@ -189,7 +190,7 @@ func (remote *S3Remote) repoKeys(prefix string) (map[string]s3.Key, error) {
   }
 
   for name, key := range *cnt {
-    key.Key = strings.TrimPrefix(name, remote.KeyPrefix)
+    key.Key = strings.TrimPrefix(name, remote.KeyPrefix + "/")
     key.ETag = strings.TrimRight(strings.TrimLeft(key.ETag, "\""), "\"")
     if key.Key != "" {
       repoKeys[key.Key] = key
