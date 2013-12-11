@@ -1,7 +1,12 @@
 package compressor
 
 import (
+  "dogestry/config"
+
+  "os"
   "os/exec"
+  "strings"
+  "fmt"
 )
 
 type Compressor struct {
@@ -10,14 +15,19 @@ type Compressor struct {
 
 
 func NewCompressor(config config.Config) (Compressor, error) {
-  path,err := filepath.LookPath(config.Compressor.Lz4)
+  lz4 := config.Compressor.Lz4
+  if lz4 == "" {
+    lz4 = "lz4"
+  }
+
+  path,err := exec.LookPath(lz4)
   if err != nil {
-    return Compressor{}, err
+    return Compressor{}, fmt.Errorf("can't find executable lz4 on the $PATH")
   }
 
   return Compressor{
     lz4Path: path,
-  }
+  }, nil
 }
 
 
@@ -25,8 +35,10 @@ func NewCompressor(config config.Config) (Compressor, error) {
 // compress using lz4
 // would use go version if we could (needs a streaming version)
 // lz4 is low compression, but extremely fast
-func (cmp *Compressor) compress(path string) error {
-  err := exec.Command(cmp.lz4Path, path, path+".lz4").Run()
+func (cmp Compressor) Compress(path string) error {
+  compressedPath := path + ".lz4"
+
+  err := exec.Command(cmp.lz4Path, path, compressedPath).Run()
   if err != nil {
     return err
   }
@@ -35,16 +47,23 @@ func (cmp *Compressor) compress(path string) error {
 }
 
 
-func (cmp *Compressor) decompress(path string) error {
-  layerFile := filepath.Join(filepath.Dir(path), )
+func (cmp Compressor) Decompress(path string) error {
+  if !strings.HasSuffix(path, ".lz4") {
+    return nil
+  }
 
-  if _, err := os.Stat(compressedLayerFile); !os.IsNotExist(err) {
-    fmt.Println("exists?", compressedLayerFile)
-    cmd := exec.Command(cmp.lz4Path, "-d", "-f", compressedLayerFile, layerFile)
+  uncompressedPath := strings.TrimSuffix(path, ".lz4")
+
+  if _, err := os.Stat(path); !os.IsNotExist(err) {
+    fmt.Println("exists?", path)
+
+    cmd := exec.Command(cmp.lz4Path, "-d", "-f", path, uncompressedPath)
     if err := cmd.Run(); err != nil {
       return err
     }
 
-    return os.Remove(compressedLayerFile)
+    return os.Remove(path)
   }
+
+  return nil
 }

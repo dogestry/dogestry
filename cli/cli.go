@@ -3,6 +3,7 @@ package cli
 import (
 	"dogestry/client"
 	"dogestry/config"
+	"dogestry/compressor"
 
 	"flag"
 	"fmt"
@@ -21,9 +22,9 @@ var (
   DefaultConfigFilePath = "./dogestry.cfg"
   DefaultConfig = config.Config{
     Remote: make(map[string]*config.RemoteConfig),
-    Compressor: CompressorConfig{
+    Compressor: config.CompressorConfig{
       Lz4: "lz4",
-    }
+    },
   }
 )
 
@@ -38,13 +39,18 @@ type DogestryCli struct {
 }
 
 
-func NewDogestryCli(client *client.Client, config config.Config) *DogestryCli {
+func NewDogestryCli(client *client.Client, config config.Config) (*DogestryCli,error) {
+  c,err := compressor.NewCompressor(config)
+  if err != nil {
+    return nil,err
+  }
+
 	return &DogestryCli{
     Config: config,
 		client: *client,
 		err:    os.Stderr,
-    compressor: compressor.NewCompressor(config)
-	}
+    compressor: c,
+	}, nil
 }
 
 // Note: snatched from docker
@@ -64,7 +70,10 @@ func ParseCommands(configFilePath string, client *client.Client, args ...string)
     return err
   }
 
-	cli := NewDogestryCli(client, config)
+	cli,err := NewDogestryCli(client, config)
+  if err != nil {
+    return err
+  }
 	defer cli.Cleanup()
 
 	if len(args) > 0 {

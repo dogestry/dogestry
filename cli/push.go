@@ -143,7 +143,7 @@ func (cli *DogestryCli) processTarEntry(root string, header *tar.Header, tarball
 
       // special case - compress layer.tar
       if filepath.Base(dest) == "layer.tar" {
-        if err := compress(dest); err != nil {
+        if err := cli.compressor.Compress(dest); err != nil {
           return err
         }
       }

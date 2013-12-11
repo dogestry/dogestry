@@ -70,7 +70,7 @@ func (cli *DogestryCli) preparePullImage(fromId, imageRoot string, r remote.Remo
 
     _, err = cli.client.InspectImage(id)
     if err == client.ErrNoSuchImage {
-      return pullImage(id, filepath.Join(imageRoot, id), r)
+      return cli.pullImage(id, filepath.Join(imageRoot, id), r)
     } else {
       fmt.Printf("docker already has id=%s, stopping\n", client.TruncateID(id))
       return remote.BreakWalk
@@ -78,29 +78,17 @@ func (cli *DogestryCli) preparePullImage(fromId, imageRoot string, r remote.Remo
   })
 }
 
-func pullImage(id, dst string, r remote.Remote) error {
+func (cli *DogestryCli) pullImage(id, dst string, r remote.Remote) error {
   err := r.PullImageId(id, dst)
   if err != nil {
     return err
   }
-  return processPulled(id, dst)
+  return cli.processPulled(id, dst)
 }
 
-func processPulled(id, dst string) error {
+func (cli *DogestryCli) processPulled(id, dst string) error {
   compressedLayerFile := filepath.Join(dst, "layer.tar.lz4")
-  layerFile := filepath.Join(dst, "layer.tar")
-
-  if _, err := os.Stat(compressedLayerFile); !os.IsNotExist(err) {
-    fmt.Println("exists?", compressedLayerFile)
-    cmd := exec.Command("./lz4", "-d", "-f", compressedLayerFile, layerFile)
-    if err := cmd.Run(); err != nil {
-      return err
-    }
-
-    return os.Remove(compressedLayerFile)
-  }
-
-  return nil
+  return cli.compressor.Decompress(compressedLayerFile)
 }
 
 func prepareRepositories(image, imageRoot string, r remote.Remote) error {
