@@ -93,6 +93,9 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
     return err
   }
 
+  // DEBUG
+  delete(remoteKeys, "images/8dbd9e392a964056420e5d58ca5cc376ef18e2de93b5cc90e868a1bbc8318c1c/layer.tar.lz4")
+
   for key, localKey := range localKeys {
 
     if remoteKey, ok := remoteKeys[key]; !ok || remoteKey.ETag != localKey.ETag {
@@ -274,9 +277,14 @@ func (remote *S3Remote) putFile(imageRoot, key string) error {
     return err
   }
 
-  buff := bufio.NewReader(f)
-  return remote.getBucket().PutReader(key, buff, finfo.Size(), "application/octet-stream", s3.Private)
+  fmt.Println("hello")
+  return putFileMulti(remote.getBucket(), key, f, finfo.Size(), S3MinPartSize, "application/octet-stream", s3.Private)
+
+  // return remote.getBucket().PutReader(key, buff, finfo.Size(), "application/octet-stream", s3.Private)
 }
+
+
+
 
 // get files from the s3 bucket to a local path
 func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys map[string]s3.Key) error {
