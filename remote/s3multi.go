@@ -14,15 +14,33 @@ var (
   Megabyte int64 = 1024 * 1024
   S3MinPartSize int64 = 5 * Megabyte
 )
+type s3request struct {
+	method   string
+	bucket   string
+	path     string
+	signpath string
+	params   url.Values
+	headers  http.Header
+	baseurl  string
+	payload  io.Reader
+	prepared bool
+}
+
+
 
 type partJob struct {
-  part s3.Part
+  multi *s3.Multi
+  part *s3.Part
   section *io.SectionReader
+  size int64
+  md5b64 string
+  md5hex string
 }
 type partResult struct {
-  part s3.Part
+  part *s3.Part
   err error
 }
+
 
 func putFileMulti(bucket *s3.Bucket, key string, r io.ReaderAt, totalSize int64, partSize int64, contentType string, acl s3.ACL) error {
   fmt.Println("ok putting", key)
@@ -59,11 +77,13 @@ func putFileMulti(bucket *s3.Bucket, key string, r io.ReaderAt, totalSize int64,
     current++
 
     partc <- partJob{
-      part: part,
+      multi: &m,
+      part: &part,
 		  section: io.NewSectionReader(r, offset, partSize),
     }
   }
   close(partc)
+
 
   partLen := current-1
   uploadedParts := make([]s3.Part, partLen)
@@ -88,17 +108,103 @@ func partUploader(id int, jobs <-chan partJob, results chan<- partResult) {
   for job := range jobs {
     fmt.Printf("uploader %d processing %d\n", id, job.part.N)
 
-    if shouldUpload(job) {
-      part,err := putPart(m, )
-    } else {
-      results <- partResult{
-        part: job.part,
-      }
+    result := partResult{part: &job.part}
+
+    if job.shouldUpload() {
+      result.err := job.put()
     }
+
+    results <- result
   }
 
   fmt.Println("uploader done", id)
 }
+
+
+func (job *partJob) calculate() error {
+  if job.md5hex != "" {
+    return nil
+  }
+
+	_, err = job.section.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+	digest := md5.New()
+	job.size, err = io.Copy(digest, job.section)
+	if err != nil {
+		return err
+	}
+
+	sum := digest.Sum(nil)
+	job.md5hex = hex.EncodeToString(sum)
+	job.md5b64 = base64.StdEncoding.EncodeToString(sum)
+
+	return nil
+}
+
+
+func (job *partJob) shouldUpload() bool {
+  job.calculate()
+  job.md5hex != `"` + job.part.ETag + `"`
+}
+
+
+func (job *partJob) put() (error) {
+  m := job.multi
+  job.calculate()
+
+	headers := map[string][]string{
+		"Content-Length": {strconv.FormatInt(job.size, 10)},
+		"Content-MD5":    {job.md5b64},
+	}
+	params := map[string][]string{
+		"uploadId":   {m.UploadId},
+		"partNumber": {strconv.FormatInt(int64(job.part.N), 10)},
+	}
+
+	for attempt := attempts.Start(); attempt.Next(); {
+		_, err := job.section.Seek(0, 0)
+		if err != nil {
+			return err
+		}
+
+		req := &s3request{
+			method:  "PUT",
+			bucket:  m.Bucket.Name,
+			path:    m.Key,
+			headers: headers,
+			params:  params,
+			payload: job.section,
+		}
+
+    // ugh
+		err = m.Bucket.S3.prepare(req)
+		if err != nil {
+			return err
+		}
+
+		resp, err := m.Bucket.S3.run(req, nil)
+		if shouldRetry(err) && attempt.HasNext() {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+
+		etag := resp.Header.Get("ETag")
+		if etag == "" {
+			return errors.New("part upload succeeded with no ETag")
+		}
+
+    job.part.ETag = etag
+    job.part.Size = job.size
+
+		return nil
+	}
+	panic("unreachable")
+}
+
 
 
 func findMultiPart(parts []s3.Part, current int) s3.Part {
@@ -117,47 +223,4 @@ func findMultiPart(parts []s3.Part, current int) s3.Part {
 func hasCode(err error, code string) bool {
 	s3err, ok := err.(*s3.Error)
 	return ok && s3err.Code == code
-}
-
-
-func putPart(m *Multi, n int, r io.ReadSeeker, partSize int64, md5b64 string) (Part, error) {
-	headers := map[string][]string{
-		"Content-Length": {strconv.FormatInt(partSize, 10)},
-		"Content-MD5":    {md5b64},
-	}
-	params := map[string][]string{
-		"uploadId":   {m.UploadId},
-		"partNumber": {strconv.FormatInt(int64(n), 10)},
-	}
-	for attempt := attempts.Start(); attempt.Next(); {
-		_, err := r.Seek(0, 0)
-		if err != nil {
-			return Part{}, err
-		}
-		req := &request{
-			method:  "PUT",
-			bucket:  m.Bucket.Name,
-			path:    m.Key,
-			headers: headers,
-			params:  params,
-			payload: r,
-		}
-		err = m.Bucket.S3.prepare(req)
-		if err != nil {
-			return Part{}, err
-		}
-		resp, err := m.Bucket.S3.run(req, nil)
-		if shouldRetry(err) && attempt.HasNext() {
-			continue
-		}
-		if err != nil {
-			return Part{}, err
-		}
-		etag := resp.Header.Get("ETag")
-		if etag == "" {
-			return Part{}, errors.New("part upload succeeded with no ETag")
-		}
-		return Part{n, etag, partSize}, nil
-	}
-	panic("unreachable")
 }
