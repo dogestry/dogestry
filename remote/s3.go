@@ -94,9 +94,10 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
   }
 
   // DEBUG
-  delete(remoteKeys, "images/8dbd9e392a964056420e5d58ca5cc376ef18e2de93b5cc90e868a1bbc8318c1c/layer.tar.lz4")
+  //delete(remoteKeys, "images/8dbd9e392a964056420e5d58ca5cc376ef18e2de93b5cc90e868a1bbc8318c1c/layer.tar.lz4")
 
   for key, localKey := range localKeys {
+
 
     if remoteKey, ok := remoteKeys[key]; !ok || remoteKey.ETag != localKey.ETag {
       fmt.Printf("pushing key %s (%s)\n", key, utils.FileHumanSize(filepath.Join(imageRoot,localKey.Key)))
@@ -277,10 +278,20 @@ func (remote *S3Remote) putFile(imageRoot, key string) error {
     return err
   }
 
-  fmt.Println("hello")
-  return putFileMulti(remote.getBucket(), key, f, finfo.Size(), S3MinPartSize, "application/octet-stream", s3.Private)
+  //fmt.Println("hello")
 
-  // return remote.getBucket().PutReader(key, buff, finfo.Size(), "application/octet-stream", s3.Private)
+  //p,err := remote.getBucket().NewParallelUploaderFromReaderAt(key, f, finfo.Size())
+  //if err != nil {
+    //return err
+  //}
+
+  //p.WorkerCount = 4
+
+  //fmt.Println("putting")
+  //return p.Put()
+  //return remote.getBucket().PutParallel(key, f, 3, finfo.Size(), s3.MinPartSize, "application/octet-stream", s3.Private)
+
+  return remote.getBucket().PutReader(key, f, finfo.Size(), "application/octet-stream", s3.Private)
 }
 
 
