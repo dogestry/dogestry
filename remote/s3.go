@@ -6,9 +6,7 @@ import (
   "dogestry/utils"
 
   "bufio"
-  "crypto/md5"
   "dogestry/client"
-  "encoding/hex"
   "encoding/json"
 
 
@@ -218,7 +216,7 @@ func (remote *S3Remote) localKeys(root string) (map[string]s3.Key, error) {
       return nil
     }
 
-    sum, err := md5File(path)
+    sum, err := utils.Md5File(path)
     if err != nil {
       return err
     }
@@ -241,21 +239,6 @@ func (remote *S3Remote) localKeys(root string) (map[string]s3.Key, error) {
   return localKeys, nil
 }
 
-// md5 file at path
-func md5File(path string) (string, error) {
-  f, err := os.Open(path)
-  if err != nil {
-    return "", nil
-  }
-  defer f.Close()
-
-  // files could be pretty big, lets buffer
-  buff := bufio.NewReader(f)
-  hash := md5.New()
-
-  io.Copy(hash, buff)
-  return hex.EncodeToString(hash.Sum(nil)), nil
-}
 
 // the full remote key (adds KeyPrefix)
 func (remote *S3Remote) remoteKey(key string) string {

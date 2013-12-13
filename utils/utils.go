@@ -3,6 +3,11 @@ package utils
 import (
   "fmt"
   "os"
+
+  "crypto/md5"
+  "encoding/hex"
+  "bufio"
+  "io"
 )
 
 // HumanSize returns a human-readable approximation of a size
@@ -30,4 +35,21 @@ func FileHumanSize(path string) string {
   }
 
   return HumanSize(size)
+}
+
+
+// md5 file at path
+func Md5File(path string) (string, error) {
+  f, err := os.Open(path)
+  if err != nil {
+    return "", nil
+  }
+  defer f.Close()
+
+  // files could be pretty big, lets buffer
+  buff := bufio.NewReader(f)
+  hash := md5.New()
+
+  io.Copy(hash, buff)
+  return hex.EncodeToString(hash.Sum(nil)), nil
 }

@@ -45,6 +45,10 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
     return err
   }
 
+  if err := cli.writeIndexes(imageRoot); err != nil {
+    return err
+  }
+
   fmt.Println("pushing image to remote")
   if err := remote.Push(image, imageRoot); err != nil {
     return err
@@ -178,6 +182,20 @@ func writeRepositories(root string, tarball io.Reader) error {
   }
 
   return nil
+}
+
+
+func writeIndexes(root string) error {
+  filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+    if !info.IsDir() || path == "" {
+      return nil
+    }
+
+    return writeIndex(filepath.Join(root, path))
+  })
+}
+
+func writeIndex(root) error {
 }
 
 // compress using lz4
