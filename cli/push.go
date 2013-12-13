@@ -45,7 +45,7 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
     return err
   }
 
-  if err := cli.writeIndexes(imageRoot); err != nil {
+  if err := writeIndexes(imageRoot); err != nil {
     return err
   }
 
@@ -186,16 +186,57 @@ func writeRepositories(root string, tarball io.Reader) error {
 
 
 func writeIndexes(root string) error {
-  filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-    if !info.IsDir() || path == "" {
+  return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+    if !info.IsDir() || path == root {
       return nil
     }
 
-    return writeIndex(filepath.Join(root, path))
+    return writeIndex(path)
   })
 }
 
-func writeIndex(root) error {
+func writeIndex(root string) error {
+  imageDir,err := os.Open(root)
+  if err != nil {
+    return err
+  }
+  defer imageDir.Close()
+
+  names,err := imageDir.Readdirnames(-1)
+  if err != nil {
+    return err
+  }
+
+  files := make([]string, 1)
+  for _,name := range names {
+    path := filepath.Join(root,name)
+    fmt.Printf("name %s\n", path)
+    if info,err := os.Stat(path); err == nil && !info.IsDir() {
+      fmt.Printf("file %s\n", path)
+      files = append(files, path)
+    }
+  }
+
+  if len(files) <= 0 {
+    return nil
+  }
+
+
+  index,err := os.Create(filepath.Join(root, "index"))
+  if err != nil {
+    return err
+  }
+  defer index.Close()
+
+  for _,name := range files {
+    sha,err := utils.Sha1File(name)
+    if err != nil {
+      return err
+    }
+    fmt.Fprintf(index, "%s %s\n", sha, filepath.Base(name))
+  }
+
+  return nil
 }
 
 // compress using lz4
