@@ -196,32 +196,34 @@ func writeIndexes(root string) error {
 }
 
 func writeIndex(root string) error {
+  // open the root
   imageDir,err := os.Open(root)
   if err != nil {
     return err
   }
   defer imageDir.Close()
 
+  // list the children
   names,err := imageDir.Readdirnames(-1)
   if err != nil {
     return err
   }
 
-  files := make([]string, 1)
+  // filter out directories
+  files := make([]string, 0)
   for _,name := range names {
     path := filepath.Join(root,name)
-    fmt.Printf("name %s\n", path)
     if info,err := os.Stat(path); err == nil && !info.IsDir() {
-      fmt.Printf("file %s\n", path)
       files = append(files, path)
     }
   }
 
+  // don't bother writing index if we don't have any files
   if len(files) <= 0 {
     return nil
   }
 
-
+  // write the index
   index,err := os.Create(filepath.Join(root, "index"))
   if err != nil {
     return err
