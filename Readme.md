@@ -53,7 +53,7 @@ time and energy worthwhile in moving away, docker must solve all of the problems
 
 It currently does not do this. Luckily most of these blockers are concentrated in the registry approach.
 
-In capistrano:
+In capistrano (as we use it):
 * dependencies are not resolved until during deployment. 
   * If the services hosting these dependencies are down, we're unable to deploy.
   * If these services go down half way through a deploy onto multiple boxes: chaos.
