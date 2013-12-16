@@ -138,7 +138,7 @@ repositories/myapp/latest       (content: 5d4e24b3d968cc6413a81f6f49566a0db80be4
 #### optional - compression
 
 I've chosen to use lz4 as the compression format as it's very fast and for `layer.tar` still seems to provide reasonable compression ratios. 
-There's a [go implementation] but there's no streaming version and I wouldn't know where to start in converting it.
+There's a [go implementation][golz4] but there's no streaming version and I wouldn't know where to start in converting it.
 
 Given that remotes are generally, well, remote, I don't think it's a stretch to include compression for the portable repository format.
 
