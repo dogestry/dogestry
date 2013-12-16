@@ -45,10 +45,6 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
     return err
   }
 
-  if err := writeIndexes(imageRoot); err != nil {
-    return err
-  }
-
   fmt.Println("pushing image to remote")
   if err := remote.Push(image, imageRoot); err != nil {
     return err
@@ -185,61 +181,6 @@ func writeRepositories(root string, tarball io.Reader) error {
 }
 
 
-func writeIndexes(root string) error {
-  return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-    if !info.IsDir() || path == root {
-      return nil
-    }
-
-    return writeIndex(path)
-  })
-}
-
-func writeIndex(root string) error {
-  // open the root
-  imageDir,err := os.Open(root)
-  if err != nil {
-    return err
-  }
-  defer imageDir.Close()
-
-  // list the children
-  names,err := imageDir.Readdirnames(-1)
-  if err != nil {
-    return err
-  }
-
-  // filter out directories
-  files := make([]string, 0)
-  for _,name := range names {
-    path := filepath.Join(root,name)
-    if info,err := os.Stat(path); err == nil && !info.IsDir() {
-      files = append(files, path)
-    }
-  }
-
-  // don't bother writing index if we don't have any files
-  if len(files) <= 0 {
-    return nil
-  }
-
-  // write the index
-  index,err := os.Create(filepath.Join(root, "index"))
-  if err != nil {
-    return err
-  }
-  defer index.Close()
-
-  for _,name := range files {
-    sha,err := utils.Sha1File(name)
-    if err != nil {
-      return err
-    }
-    fmt.Fprintf(index, "%s %s\n", sha, filepath.Base(name))
-  }
-
-  return nil
-}
 
 // compress using lz4
 // would use go version if we could (needs a streaming version)
