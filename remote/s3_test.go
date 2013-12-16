@@ -9,6 +9,10 @@ import (
 	"testing"
 	"time"
 
+  "os"
+  "io/ioutil"
+  "path/filepath"
+
 	"github.com/lachie/goamz/aws"
 	"github.com/lachie/goamz/s3"
 	"github.com/lachie/goamz/testutil"
@@ -23,6 +27,7 @@ func Test(t *testing.T) {
 
 type S struct {
 	remote *S3Remote
+  tempDir string
 }
 
 var _ = Suite(&S{})
@@ -44,13 +49,13 @@ func (s *S) SetUpSuite(c *C) {
   auth := aws.Auth{"abc", "123", ""}
   client := s3.New(auth, aws.Region{Name: "faux-region-1", S3Endpoint: testServer.URL})
 
-  //remote,err := NewRemote("s3://bucket/prefix&region=faux-region-1", baseConfig)
-  //if err != nil {
-    //panic(err)
-  //}
 
-  //s.remote = remote.(*S3Remote)
+  tempDir, err := ioutil.TempDir("", "dogestry-test")
+  if err != nil {
+    c.Fatalf("couldn't get tempdir: %s", err)
+  }
 
+  s.tempDir = tempDir
 
   s.remote = &S3Remote{
     config: baseConfig,
@@ -62,6 +67,8 @@ func (s *S) SetUpSuite(c *C) {
 
 func (s *S) TearDownSuite(c *C) {
   s3.SetAttemptStrategy(nil)
+
+  defer os.RemoveAll(s.tempDir)
 }
 
 func (s *S) SetUpTest(c *C) {
@@ -97,4 +104,30 @@ func (s *S) TestRepoKeys(c *C) {
 
   c.Assert(keys["Neo"].key, Equals, "Neo")
   c.Assert(keys["Neo"].sum, Equals, "")
+}
+
+
+func (s *S) TestLocalKeys(c *C) {
+  dumpFile(s.tempDir, "file1", "hello world")
+  dumpFile(s.tempDir, "dir/file2", "hello mars")
+
+  keys,err := s.remote.localKeys(s.tempDir)
+	c.Assert(err, IsNil)
+
+  c.Assert(keys["file1"].key, Equals, "file1")
+  c.Assert(keys["file1"].fullPath, Equals, filepath.Join(s.tempDir,"file1"))
+  c.Assert(keys["file1"].sum, Equals, "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed")
+
+  c.Assert(keys["dir/file2"].key, Equals, "dir/file2")
+  c.Assert(keys["dir/file2"].fullPath, Equals, filepath.Join(s.tempDir,"dir/file2"))
+  c.Assert(keys["dir/file2"].sum, Equals, "dd6944c43fabd03cf643fe0daf625759dbdea808")
+}
+
+
+func dumpFile(temp, filename, content string) error {
+  out := filepath.Join(temp, filename)
+  if err := os.MkdirAll(filepath.Dir(out), 0700); err != nil {
+    return err
+  }
+  return ioutil.WriteFile(out, []byte(content), 0600)
 }
