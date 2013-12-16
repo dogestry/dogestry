@@ -4,16 +4,15 @@ import (
 	//"bytes"
 	//"io/ioutil"
 	//"net/http"
-	"testing"
 	//"strings"
+
+	"testing"
 	"time"
 
 	"github.com/lachie/goamz/aws"
 	"github.com/lachie/goamz/s3"
 	"github.com/lachie/goamz/testutil"
 	. "launchpad.net/gocheck"
-
-  "fmt"
 
   "dogestry/config"
 )
