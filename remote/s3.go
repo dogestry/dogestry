@@ -154,8 +154,9 @@ func (remote *S3Remote) ImageFullId(id ID) (ID, error) {
   }
 
   for key, _ := range remoteKeys {
+    key = strings.TrimPrefix(key, "images/")
     parts := strings.Split(key, "/")
-    if strings.HasPrefix(string(id), parts[0]) {
+    if strings.HasPrefix(parts[0], string(id)) {
       return ID(parts[0]), nil
     }
   }
