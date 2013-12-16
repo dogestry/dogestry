@@ -32,6 +32,7 @@ type keyDef struct {
   key string
   s3Key s3.Key
   sum string
+  fullPath string
 }
 
 var (
@@ -101,19 +102,14 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
     return err
   }
 
-  fmt.Printf("repo  %#v\n", remoteKeys)
-  fmt.Printf("local %#v\n", localKeys)
-
   // DEBUG
   //delete(remoteKeys, "images/8dbd9e392a964056420e5d58ca5cc376ef18e2de93b5cc90e868a1bbc8318c1c/layer.tar.lz4")
 
-  for key, localKey := range localKeys {
-    if remoteKey, ok := remoteKeys[key]; !ok || remoteKey.sum != localKey.sum {
-      fmt.Printf("pushing key %s (%s)\n", key, utils.FileHumanSize(filepath.Join(imageRoot,localKey.sum)))
+  for key, localKey := range localKeys.NotIn(remoteKeys) {
+    fmt.Printf("pushing key %s (%s)\n", key, utils.FileHumanSize(localKey.fullPath))
 
-      if err := remote.putFile(filepath.Join(imageRoot, localKey.key), localKey); err != nil {
-        return err
-      }
+    if err := remote.putFile(localKey.fullPath, localKey); err != nil {
+      return err
     }
   }
 
@@ -201,8 +197,10 @@ func (remote *S3Remote) getBucket() *s3.Bucket {
 
 
 
+// keys represents either local or remote files
 type keys map[string]*keyDef
 
+// gets a key, creating the underlying keyDef if required
 func (k keys) Get(key string) *keyDef {
   if existing,ok := k[key]; ok {
     return existing
@@ -212,6 +210,21 @@ func (k keys) Get(key string) *keyDef {
 
   return k[key]
 }
+
+// Returns keys either not existing in other, 
+// or whose sum doesn't match.
+func (k keys) NotIn(other keys) keys {
+  notIn := make(keys)
+
+  for key,thisKeyDef := range k {
+    if otherKeyDef, ok := other[key]; !ok || otherKeyDef.sum != thisKeyDef.sum {
+      notIn[key] = thisKeyDef
+    }
+  }
+
+  return notIn
+}
+
 
 
 // get repository keys from s3
@@ -253,8 +266,8 @@ func (remote *S3Remote) repoKeys(prefix string) (keys, error) {
 
 // Get repository keys from the local work dir.
 // Returned as a map of s3.Key's for ease of comparison.
-func (remote *S3Remote) localKeys(root string) (map[string]keyDef, error) {
-  localKeys := make(map[string]keyDef)
+func (remote *S3Remote) localKeys(root string) (keys, error) {
+  localKeys := make(keys)
 
   if root[len(root)-1] != '/' {
     root = root + "/"
@@ -272,10 +285,10 @@ func (remote *S3Remote) localKeys(root string) (map[string]keyDef, error) {
 
     key := strings.TrimPrefix(path, root)
 
-    // TODO calc sum
-    localKeys[key] = keyDef{
+    localKeys[key] = &keyDef{
       key: key,
       sum: sum,
+      fullPath: path,
     }
 
     return nil
@@ -291,7 +304,7 @@ func (remote *S3Remote) localKeys(root string) (map[string]keyDef, error) {
 
 
 // put a file with key from imageRoot to the s3 bucket
-func (remote *S3Remote) putFile(src string, key keyDef) error {
+func (remote *S3Remote) putFile(src string, key *keyDef) error {
   dstKey := remote.remoteKey(key.key)
 
   f, err := os.Open(src)
@@ -305,21 +318,20 @@ func (remote *S3Remote) putFile(src string, key keyDef) error {
     return err
   }
 
-  //fmt.Println("hello")
+  // TODO make these two operations more atomic somehow
+  p,err := remote.getBucket().NewParallelUploaderFromReaderAt(dstKey, f, finfo.Size())
+  if err != nil {
+    return err
+  }
 
-  //p,err := remote.getBucket().NewParallelUploaderFromReaderAt(key, f, finfo.Size())
-  //if err != nil {
-    //return err
-  //}
+  p.WorkerCount = 4
 
-  //p.WorkerCount = 4
+  fmt.Println("putting")
+  if err := p.Put(); err != nil {
+    return err
+  }
 
-  //fmt.Println("putting")
-  //return p.Put()
-  //return remote.getBucket().PutParallel(key, f, 3, finfo.Size(), s3.MinPartSize, "application/octet-stream", s3.Private)
-
-  return remote.getBucket().PutReader(dstKey, f, finfo.Size(), "application/octet-stream", s3.Private)
-  // TODO write sum
+  return remote.getBucket().Put(dstKey+".sum", []byte(key.sum), "text/plain", s3.Private)
 }
 
 
