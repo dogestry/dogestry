@@ -79,7 +79,7 @@ Docker's registry doesn't solve these problems.
 ### enter dogestry
 
 Dogestry aims to solve these particular problems by simplifying the image storage story, while maintaining some of the convenience of
-`docker run ubuntu`.
+the docker registry.
 
 Dogestry's design aims to support a wide range of dumb and smart transports.
 
