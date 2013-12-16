@@ -35,9 +35,9 @@ dogestry pull central hipache
 
 ### config
 
-Configure dogestry with `dogestry.cfg`. By default its looked for in `./dogestry.cfg`.
+Configure dogestry with `dogestry.cfg`. By default it's looked for in `./dogestry.cfg`.
 
-Dogestry can often run without a configuration file, but its there if you need it.
+Dogestry can often run without a configuration file, but it's there if you need it.
 
 For example, using the config file, you can set up remote aliases for convenience or specifiy s3 credentials.
 
@@ -137,14 +137,14 @@ repositories/myapp/latest       (content: 5d4e24b3d968cc6413a81f6f49566a0db80be4
 
 #### optional - compression
 
-I've chosen to use lz4 as the compression format as its very fast and for `layer.tar` still seems to provide reasonable compression ratios. 
+I've chosen to use lz4 as the compression format as it's very fast and for `layer.tar` still seems to provide reasonable compression ratios. 
 There's a [go implementation] but there's no streaming version and I wouldn't know where to start in converting it.
 
-Given that remotes are generally, well, remote, I don't think its a stretch to include compression for the portable repository format.
+Given that remotes are generally, well, remote, I don't think it's a stretch to include compression for the portable repository format.
 
 It probably should be optional though.
 
-Currently its part of the Push/Pull command, but I intend to push the implementation down into the s3 remote.
+Currently it's part of the Push/Pull command, but I intend to push the implementation down into the s3 remote.
 
 #### optional - checksumming
 
