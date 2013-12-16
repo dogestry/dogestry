@@ -71,7 +71,7 @@ Docker's registry doesn't solve these problems.
 * Docker's interaction with docker-registry is complex and tightly coupled
   * Tied in with the first problem, there are no guarantees that docker won't go out to the official registry for images. This isn't acceptible for production.
   * It might delegate to the index for auth. Again, in production I would want to actively disable this.
-* Setting up docker-registry is complex
+* Setting up docker-registry seems complex
   * It doesn't support secure setups out of the box. There's a suggestion to use basic auth, but no documentation on how to set it up.
   * I've spent a long time trying to work out how to get basic auth working, but haven't cracked it yet!
   * By comparison: docker's single go binary
@@ -96,6 +96,9 @@ Using the new feature for de/serialising self-consistent image histories (`GET /
 
 "Remotes" are the external storage locations for the docker images. Dogestry implements transports for each kind of remote, much
 like git.
+
+Authentication/authorisation is orthogonal to the concerns of dogestry. It relies on each transport's natural authorisation, such as s3's AWS credentials, or 
+unix filesystem permissions. Future transports could use ssh, sftp or the docker registry API.
 
 #### local remote
 
@@ -168,7 +171,7 @@ I've implemented checksumming as part of the s3 remote.
 
 Although I'd like docker's external image storage approach to be more flexible and less complex, I can support what I need reasonably efficiently with current docker features.
 
-I do hope that this code stimulates some discussion on the subject, but its main aim is to support my use-case.
+Dogestry's main aim is to support my use-case, but I hope that this code stimulates some discussion on the subject.
 
 
 [cap]: https://github.com/capistrano/capistrano
