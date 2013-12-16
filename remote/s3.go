@@ -304,6 +304,14 @@ func (remote *S3Remote) localKeys(root string) (keys, error) {
 }
 
 
+type progress struct {
+  worker int
+  size int64
+  totalSize int64
+  index int
+  err error
+}
+
 // put a file with key from imageRoot to the s3 bucket
 func (remote *S3Remote) putFile(src string, key *keyDef) error {
   dstKey := remote.remoteKey(key.key)
@@ -319,6 +327,8 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
     return err
   }
 
+
+
   // TODO make these two operations more atomic somehow
   p,err := remote.getBucket().NewParallelUploaderFromReaderAt(dstKey, f, finfo.Size())
   if err != nil {
@@ -326,6 +336,32 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
   }
 
   p.WorkerCount = 4
+
+  progressc := make(chan progress, 100)
+
+  go func() {
+    for p := range progressc {
+      fmt.Println("progress", p.size, p.index)
+    }
+  }()
+  defer close(progressc)
+
+  p.UploadWorker = func (id int, job s3.PartJob) error {
+    fmt.Println("starting", job.Part.N)
+    err := s3.MultiPartUploader(id, job)
+
+    fmt.Printf("got %#v", job)
+
+    progressc <- progress{
+      size: job.Size,
+      worker: id,
+      totalSize: p.TotalSize,
+      index: job.Part.N,
+      err: err,
+    }
+
+    return err
+  }
 
   fmt.Println("putting")
   if err := p.Put(); err != nil {
