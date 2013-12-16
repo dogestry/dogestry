@@ -4,11 +4,11 @@ Proof of concept for simple image storage for docker.
 
 ## prerequisites
 
-* lz4 - https://code.google.com/p/lz4/ compiled and on the path
+* [lz4][lz4] -  compiled and on the path
 * go 1.2
 * docker
 
-Currently, the user running dogestry needs permissions to access the docker socket. [See here for more info][https://docs.docker.io/en/latest/use/basics/#sudo-and-the-docker-group]
+Currently, the user running dogestry needs permissions to access the docker socket. [See here for more info][docker-sudo]
 
 Currently the docker socket's location isn't configurable.
 
@@ -173,3 +173,5 @@ I do hope that this code stimulates some discussion on the subject, but its main
 
 [cap]: https://github.com/capistrano/capistrano
 [golz4]: https://github.com/bkaradzic/go-lz4
+[lz4]: https://code.google.com/p/lz4/
+[docker-sudo]: https://docs.docker.io/en/latest/use/basics/#sudo-and-the-docker-group
