@@ -2,53 +2,88 @@
 
 Proof of concept for simple image storage for docker.
 
-## thesis
+## prerequisites
 
-In my organisation docker will be the way for us to move away from [`cap deploy`][cap]
+* lz4 - https://code.google.com/p/lz4/ compiled and on the path
+* go 1.2
+* docker
 
-* When deploying with `cap`, a window of risk in opened.
-* resource wastage and contention
-  * The next release of code is prepared to run on the same machine as the running code.
-  * If we have N servers, this is performed in parallel on N servers.
-  * This means that the running production app can be affected by deployments which use too much CPU or RAM.
-* external dependencies
-  * Our apps are ruby on rails.
-  * Part of code preparation is `bundle install` which satisfied code dependencies.
-  * `bundle install` goes out to github.
-  * github is partially down.
-  * 7/12 servers get deployed and restarted. 5/12 do not.
+Currently, the user running dogestry needs permissions to access the docker socket. [See here for more info][https://docs.docker.io/en/latest/use/basics/#sudo-and-the-docker-group]
 
-The promise of docker is to take all this preparation offline. This solves resource wastage and contention but as it stands
-we're still exposed to problems with external dependencies.
+Currently the docker socket's location isn't configurable.
 
-Specifically, using docker relies on the central registry being up.
+## usage
 
-* `docker run myregistry.mycompany.com/myapp:20131210`
-* `myregistry.mycompany.com/myapp` is pulled successfully, but relies on `ubuntu` somewhere in its history.
-* `index.docker.io` is unreachable for some reason.
-* bummer.
+### push
 
+Push the `redis` image and its current tag to the `central` remote. The `central` remote is an alias to a remote defined in `dogestry.cfg`
+```
+dogestry push central redis
+```
 
-### with dogestry
+Push the `hipache` image to the s3 bucket `ops-goodies` with the key prefix `docker-repo` located in `us-west-2`:
+```
+dogestry push s3://ops-goodies/docker-repo/?region=us-west-2 hipache
+```
 
-* fresh ec2 machine is provisioned from an AMI with docker preinstalled
-* dogestry pull myapp:20131210 s3://myregistry.mycompany.com/
-  * s3 credentials are automatically discovered via IAM and the metadata service
-* docker run myapp:20131210
+### pull
 
-or for an update
+Pull the `hipache` image and tag from the `central`.
+```
+dogestry pull central hipache
+```
 
-* dogestry pull myapp:20131213 s3://myregistry.mycompany.com/
-* docker run myapp:20131213
-* (kill the old container)
+### config
 
+Configure dogestry with `dogestry.cfg`. By default its looked for in `./dogestry.cfg`.
 
-### other problems
+Dogestry can often run without a configuration file, but its there if you need it.
 
-* Simple but secure docker-registry setup is complex; I can't it working with basic auth.
-I'm not sure its possible with the way docker-registry uses the `Authorization` HTTP header.
+For example, using the config file, you can set up remote aliases for convenience or specifiy s3 credentials.
 
-## solution
+However, if you're bootstrapping a system, you might rely on IAM instance profiles for credentials and specify the
+remote using its full url.
+
+## discussion
+
+In my organisation docker will be the way for us to move away from Capistrano's [`cap deploy`][cap].
+
+Capistrano has a number of problems which docker solves neatly or sidesteps entirely. However to make the investment of
+time and energy worthwhile in moving away, docker must solve all of the problems Capistrano presents.
+
+It currently does not do this. Luckily most of these blockers are concentrated in the registry approach.
+
+In capistrano:
+* dependencies are not resolved until during deployment. 
+  * If the services hosting these dependencies are down, we're unable to deploy.
+  * If these services go down half way through a deploy onto multiple boxes: chaos.
+  * This is particularly the case on fresh boxes, `bundle install` is a very expensive and coupled to external service uptime.
+* Capistrano as software is complex
+  * Maintinaing recipes is difficult
+  * Debugging recipes is difficult
+  * Testing ditto
+
+Docker's registry doesn't solve these problems.
+
+* The official registry (http://index.docker.io) is centralised.
+  * Particularly on a fresh machine, if we can't pull the ubuntu image, we're out of luck.
+  * So we need to ensure that images are available from somewhere internal
+* Docker's interaction with docker-registry is complex and tightly coupled
+  * Tied in with the first problem, there are no guarantees that docker won't go out to the official registry for images. This isn't acceptible for production.
+  * It might delegate to the index for auth. Again, in production I would want to actively disable this.
+* Setting up docker-registry is complex
+  * It doesn't support secure setups out of the box. There's a suggestion to use basic auth, but no documentation on how to set it up.
+  * I've spent a long time trying to work out how to get basic auth working, but haven't cracked it yet!
+  * By comparison: docker's single go binary
+
+### enter dogestry
+
+Dogestry aims to solve these particular problems by simplifying the image storage story, while maintaining some of the convenience of
+`docker run ubuntu`.
+
+Dogestry's design aims to support a wide range of dumb and smart transports.
+
+It centres around a common portable repository format.
 
 ### synchronisation
 
@@ -59,7 +94,8 @@ Using the new feature for de/serialising self-consistent image histories (`GET /
 
 ### remotes
 
-"Remotes" are the external storage locations for the docker images.
+"Remotes" are the external storage locations for the docker images. Dogestry implements transports for each kind of remote, much
+like git.
 
 #### local remote
 
@@ -73,16 +109,19 @@ Dumb transport, synchronises with an s3 bucket using the s3 api.
 
 Smart transport, synchronises with an instance of docker-registry.
 
+#### others
+
+Dedicated dogestry server, ssh, other cloud file providers.
+
 ### portable repository format
 
 * able to serve as a repository over dumb transports (rsync, s3)
-* adds compression to `layer.tar`
 
-example layout
+example layout:
 
 images:
 ```
-images/5d4e24b3d968cc6413a81f6f49566a0db80be401d647ade6d977a9dd9864569f/layer.tar.lz4
+images/5d4e24b3d968cc6413a81f6f49566a0db80be401d647ade6d977a9dd9864569f/layer.tar
 images/5d4e24b3d968cc6413a81f6f49566a0db80be401d647ade6d977a9dd9864569f/VERSION
 images/5d4e24b3d968cc6413a81f6f49566a0db80be401d647ade6d977a9dd9864569f/json 
 ```
@@ -93,6 +132,23 @@ repositories/myapp/20131210     (content: 5d4e24b3d968cc6413a81f6f49566a0db80be4
 repositories/myapp/latest       (content: 5d4e24b3d968cc6413a81f6f49566a0db80be401d647ade6d977a9dd9864569f)
 ```
 
+#### optional - compression
+
+I've chosen to use lz4 as the compression format as its very fast and for `layer.tar` still seems to provide reasonable compression ratios. 
+There's a [go implementation] but there's no streaming version and I wouldn't know where to start in converting it.
+
+Given that remotes are generally, well, remote, I don't think its a stretch to include compression for the portable repository format.
+
+It probably should be optional though.
+
+Currently its part of the Push/Pull command, but I intend to push the implementation down into the s3 remote.
+
+#### optional - checksumming
+
+Some remotes support cheap checksumming by default, others don't.
+
+I've implemented checksumming as part of the s3 remote.
+
 ## docker changes
 * dogestry can work with docker as-is
 * at the very least, I'd like to add a flag to enact the zero external dependency requirement (this could be done with e.g. hacking /etc/hosts, but a docker flag would be neater & more pro).
@@ -100,5 +156,20 @@ repositories/myapp/latest       (content: 5d4e24b3d968cc6413a81f6f49566a0db80be4
 * nice to have would be in-stream de/compression of layer.tar in `GET /images/<name>/get` and `POST /images/load`.
 * best of all would be to integrate some different registry approaches into docker.
 
+## TODO
+
+- more tests.
+- move compression into remote.
+- more remotes.
+- more tag operations
+
+
+## conclusion
+
+Although I'd like docker's external image storage approach to be more flexible and less complex, I can support what I need reasonably efficiently with current docker features.
+
+I do hope that this code stimulates some discussion on the subject, but its main aim is to support my use-case.
+
 
 [cap]: https://github.com/capistrano/capistrano
+[golz4]: https://github.com/bkaradzic/go-lz4
