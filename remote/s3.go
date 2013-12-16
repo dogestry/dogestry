@@ -94,12 +94,12 @@ func (remote *S3Remote) Desc() string {
 func (remote *S3Remote) Push(image, imageRoot string) error {
   remoteKeys, err := remote.repoKeys("")
   if err != nil {
-    return err
+    return fmt.Errorf("error getting repoKeys: %s", err)
   }
 
   localKeys, err := remote.localKeys(imageRoot)
   if err != nil {
-    return err
+    return fmt.Errorf("error getting localKeys: %s", err)
   }
 
   // DEBUG
@@ -226,18 +226,17 @@ func (k keys) NotIn(other keys) keys {
   return notIn
 }
 
-
-
 // get repository keys from s3
 func (remote *S3Remote) repoKeys(prefix string) (keys, error) {
   repoKeys := make(keys)
   remotePrefix := remote.KeyPrefix + "/"
+  bucketPrefix := remote.KeyPrefix + prefix
 
   bucket := remote.getBucket()
 
-  cnt, err := bucket.GetBucketContentsWithPrefix(remote.KeyPrefix + prefix)
+  cnt, err := bucket.GetBucketContentsWithPrefix(bucketPrefix)
   if err != nil {
-    return repoKeys, err
+    return repoKeys, fmt.Errorf("getting bucket contents at prefix '%s': %s", prefix, err)
   }
 
   for _, key := range *cnt {
@@ -327,48 +326,11 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
     return err
   }
 
+  progressReader := utils.NewProgressReader(f, finfo.Size(), os.Stdout)
 
+  fmt.Println("look", dstKey)
 
-  // TODO make these two operations more atomic somehow
-  p,err := remote.getBucket().NewParallelUploaderFromReaderAt(dstKey, f, finfo.Size())
-  if err != nil {
-    return err
-  }
-
-  p.WorkerCount = 4
-
-  progressc := make(chan progress, 100)
-
-  go func() {
-    for p := range progressc {
-      fmt.Println("progress", p.size, p.index)
-    }
-  }()
-  defer close(progressc)
-
-  p.UploadWorker = func (id int, job s3.PartJob) error {
-    fmt.Println("starting", job.Part.N)
-    err := s3.MultiPartUploader(id, job)
-
-    fmt.Printf("got %#v", job)
-
-    progressc <- progress{
-      size: job.Size,
-      worker: id,
-      totalSize: p.TotalSize,
-      index: job.Part.N,
-      err: err,
-    }
-
-    return err
-  }
-
-  fmt.Println("putting")
-  if err := p.Put(); err != nil {
-    return err
-  }
-
-  return remote.getBucket().Put(dstKey+".sum", []byte(key.sum), "text/plain", s3.Private)
+  return remote.getBucket().PutReader(dstKey, progressReader, finfo.Size(), "application/octet-stream", s3.Private)
 }
 
 
