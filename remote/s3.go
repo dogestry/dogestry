@@ -27,6 +27,13 @@ type S3Remote struct {
   client     *s3.S3
 }
 
+
+type keyDef struct {
+  key string
+  s3Key s3.Key
+  sum string
+}
+
 var (
   S3DefaultRegion = "us-west-2"
 )
@@ -69,16 +76,19 @@ func newS3Client(config RemoteConfig) (*s3.S3, error) {
   return s3.New(auth, region), nil
 }
 
+
 // determine the s3 auth from various sources
 func getS3Auth(config RemoteConfig) (aws.Auth, error) {
   s3config := config.Config.S3
   return aws.GetAuth(s3config.Access_Key_Id, s3config.Secret_Key)
 }
 
+
 // Remote: describe the remote
 func (remote *S3Remote) Desc() string {
   return fmt.Sprintf("s3(bucket=%s, prefix=%s)", remote.BucketName, remote.KeyPrefix)
 }
+
 
 func (remote *S3Remote) Push(image, imageRoot string) error {
   remoteKeys, err := remote.repoKeys("")
@@ -91,16 +101,17 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
     return err
   }
 
+  fmt.Printf("repo  %#v\n", remoteKeys)
+  fmt.Printf("local %#v\n", localKeys)
+
   // DEBUG
   //delete(remoteKeys, "images/8dbd9e392a964056420e5d58ca5cc376ef18e2de93b5cc90e868a1bbc8318c1c/layer.tar.lz4")
 
   for key, localKey := range localKeys {
+    if remoteKey, ok := remoteKeys[key]; !ok || remoteKey.sum != localKey.sum {
+      fmt.Printf("pushing key %s (%s)\n", key, utils.FileHumanSize(filepath.Join(imageRoot,localKey.sum)))
 
-
-    if remoteKey, ok := remoteKeys[key]; !ok || remoteKey.ETag != localKey.ETag {
-      fmt.Printf("pushing key %s (%s)\n", key, utils.FileHumanSize(filepath.Join(imageRoot,localKey.Key)))
-
-      if err := remote.putFile(imageRoot, localKey.Key); err != nil {
+      if err := remote.putFile(filepath.Join(imageRoot, localKey.key), localKey); err != nil {
         return err
       }
     }
@@ -119,6 +130,7 @@ func (remote *S3Remote) PullImageId(id ID, dst string) error {
   return remote.getFiles(dst, rootKey, imageKeys)
 }
 
+
 func (remote *S3Remote) ParseTag(repo, tag string) (ID, error) {
   bucket := remote.getBucket()
 
@@ -133,9 +145,11 @@ func (remote *S3Remote) ParseTag(repo, tag string) (ID, error) {
   return ID(file), nil
 }
 
+
 func (remote *S3Remote) ResolveImageNameToId(image string) (ID, error) {
   return ResolveImageNameToId(remote, image)
 }
+
 
 func (remote *S3Remote) ImageFullId(id ID) (ID, error) {
   remoteKeys, err := remote.repoKeys("/images")
@@ -153,9 +167,11 @@ func (remote *S3Remote) ImageFullId(id ID) (ID, error) {
   return "", ErrNoSuchImage
 }
 
+
 func (remote *S3Remote) WalkImages(id ID, walker ImageWalkFn) error {
   return WalkImages(remote, id, walker)
 }
+
 
 func (remote *S3Remote) ImageMetadata(id ID) (client.Image, error) {
   jsonPath := path.Join(remote.imagePath(id), "json")
@@ -176,26 +192,59 @@ func (remote *S3Remote) ImageMetadata(id ID) (client.Image, error) {
   return image, nil
 }
 
+
 // get the configured bucket
 func (remote *S3Remote) getBucket() *s3.Bucket {
   // memoise?
   return remote.client.Bucket(remote.BucketName)
 }
 
-// get repository keys from s3
-func (remote *S3Remote) repoKeys(prefix string) (map[string]s3.Key, error) {
-  repoKeys := make(map[string]s3.Key)
 
-  cnt, err := remote.getBucket().GetBucketContentsWithPrefix(remote.KeyPrefix + prefix)
+
+type keys map[string]*keyDef
+
+func (k keys) Get(key string) *keyDef {
+  if existing,ok := k[key]; ok {
+    return existing
+  } else {
+    k[key] = &keyDef{key: key}
+  }
+
+  return k[key]
+}
+
+
+// get repository keys from s3
+func (remote *S3Remote) repoKeys(prefix string) (keys, error) {
+  repoKeys := make(keys)
+  remotePrefix := remote.KeyPrefix + "/"
+
+  bucket := remote.getBucket()
+
+  cnt, err := bucket.GetBucketContentsWithPrefix(remote.KeyPrefix + prefix)
   if err != nil {
     return repoKeys, err
   }
 
-  for name, key := range *cnt {
-    key.Key = strings.TrimPrefix(name, remote.KeyPrefix + "/")
-    key.ETag = strings.TrimRight(strings.TrimLeft(key.ETag, "\""), "\"")
-    if key.Key != "" {
-      repoKeys[key.Key] = key
+  for _, key := range *cnt {
+    if key.Key == "" {
+      continue
+    }
+
+    plainKey := strings.TrimPrefix(key.Key, remotePrefix)
+
+    if strings.HasSuffix(plainKey, ".sum") {
+      plainKey = strings.TrimSuffix(plainKey, ".sum")
+
+      bytesSum,err := bucket.Get(key.Key)
+      if err != nil {
+        return repoKeys, err
+      }
+
+      repoKeys.Get(plainKey).sum = string(bytesSum)
+
+    } else {
+      repoKeys.Get(plainKey).s3Key = key
     }
   }
 
@@ -204,8 +253,8 @@ func (remote *S3Remote) repoKeys(prefix string) (map[string]s3.Key, error) {
 
 // Get repository keys from the local work dir.
 // Returned as a map of s3.Key's for ease of comparison.
-func (remote *S3Remote) localKeys(root string) (map[string]s3.Key, error) {
-  localKeys := make(map[string]s3.Key)
+func (remote *S3Remote) localKeys(root string) (map[string]keyDef, error) {
+  localKeys := make(map[string]keyDef)
 
   if root[len(root)-1] != '/' {
     root = root + "/"
@@ -216,16 +265,17 @@ func (remote *S3Remote) localKeys(root string) (map[string]s3.Key, error) {
       return nil
     }
 
-    sum, err := utils.Md5File(path)
+    sum, err := utils.Sha1File(path)
     if err != nil {
       return err
     }
 
     key := strings.TrimPrefix(path, root)
 
-    localKeys[key] = s3.Key{
-      Key:  key,
-      ETag: sum,
+    // TODO calc sum
+    localKeys[key] = keyDef{
+      key: key,
+      sum: sum,
     }
 
     return nil
@@ -240,23 +290,17 @@ func (remote *S3Remote) localKeys(root string) (map[string]s3.Key, error) {
 }
 
 
-// the full remote key (adds KeyPrefix)
-func (remote *S3Remote) remoteKey(key string) string {
-  return path.Join(remote.KeyPrefix, key)
-}
-
 // put a file with key from imageRoot to the s3 bucket
-func (remote *S3Remote) putFile(imageRoot, key string) error {
-  path := filepath.Join(imageRoot, key)
-  key = remote.remoteKey(key)
+func (remote *S3Remote) putFile(src string, key keyDef) error {
+  dstKey := remote.remoteKey(key.key)
 
-  f, err := os.Open(path)
+  f, err := os.Open(src)
   if err != nil {
     return err
   }
   defer f.Close()
 
-  finfo, err := os.Stat(path)
+  finfo, err := f.Stat()
   if err != nil {
     return err
   }
@@ -274,17 +318,24 @@ func (remote *S3Remote) putFile(imageRoot, key string) error {
   //return p.Put()
   //return remote.getBucket().PutParallel(key, f, 3, finfo.Size(), s3.MinPartSize, "application/octet-stream", s3.Private)
 
-  return remote.getBucket().PutReader(key, f, finfo.Size(), "application/octet-stream", s3.Private)
+  return remote.getBucket().PutReader(dstKey, f, finfo.Size(), "application/octet-stream", s3.Private)
+  // TODO write sum
 }
 
 
 
 
-// get files from the s3 bucket to a local path
-func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys map[string]s3.Key) error {
-  for key, _ := range imageKeys {
-    relKey := strings.TrimPrefix(key, rootKey)
-    err := remote.getFile(filepath.Join(dst, relKey), key)
+// get files from the s3 bucket to a local path, relative to rootKey
+// eg
+//
+// dst: "/tmp/rego/123"
+// rootKey: "images/456"
+// key: "images/images/456/json"
+// downloads to: "/tmp/rego/123/456/json"
+func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
+  for _, keyDef := range imageKeys {
+    relKey := strings.TrimPrefix(keyDef.key, rootKey)
+    err := remote.getFile(filepath.Join(dst, relKey), keyDef)
     if err != nil {
       return err
     }
@@ -294,10 +345,10 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys map[string]s3.Ke
 }
 
 // get a single file from the s3 bucket
-func (remote *S3Remote) getFile(dst, key string) error {
-  fullKey := path.Join(remote.KeyPrefix, key)
+func (remote *S3Remote) getFile(dst string, key *keyDef) error {
+  srcKey := remote.remoteKey(key.key)
 
-  from, err := remote.getBucket().GetReader(fullKey)
+  from, err := remote.getBucket().GetReader(srcKey)
   if err != nil {
     return err
   }
@@ -318,6 +369,8 @@ func (remote *S3Remote) getFile(dst, key string) error {
     return err
   }
 
+  // TODO validate against sum
+
   fmt.Printf("pulled key %s (%s)\n", key, utils.HumanSize(wrote))
 
   return nil
@@ -332,3 +385,9 @@ func (remote *S3Remote) tagFilePath(repo, tag string) string {
 func (remote *S3Remote) imagePath(id ID) string {
   return filepath.Join(remote.KeyPrefix, "images", string(id))
 }
+
+// the full remote key (adds KeyPrefix)
+func (remote *S3Remote) remoteKey(key string) string {
+  return path.Join(remote.KeyPrefix, key)
+}
+
