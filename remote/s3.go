@@ -342,9 +342,12 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 
   progressReader := utils.NewProgressReader(f, finfo.Size(), os.Stdout)
 
-  fmt.Println("look", dstKey)
+  err = remote.getBucket().PutReader(dstKey, progressReader, finfo.Size(), "application/octet-stream", s3.Private)
+  if err != nil {
+    return err
+  }
 
-  return remote.getBucket().PutReader(dstKey, progressReader, finfo.Size(), "application/octet-stream", s3.Private)
+  return remote.getBucket().Put(dstKey+".sum", []byte(key.sum), "text/plain", s3.Private)
 }
 
 
@@ -355,7 +358,7 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 //
 // dst: "/tmp/rego/123"
 // rootKey: "images/456"
-// key: "images/images/456/json"
+// key: "images/456/json"
 // downloads to: "/tmp/rego/123/456/json"
 func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
   for _, keyDef := range imageKeys {
