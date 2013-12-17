@@ -92,20 +92,34 @@ func (remote *S3Remote) Desc() string {
 
 
 func (remote *S3Remote) Push(image, imageRoot string) error {
+  fmt.Println("fetching repo keys")
   remoteKeys, err := remote.repoKeys("")
   if err != nil {
     return fmt.Errorf("error getting repoKeys: %s", err)
   }
 
+  fmt.Println("fetching local keys")
   localKeys, err := remote.localKeys(imageRoot)
   if err != nil {
     return fmt.Errorf("error getting localKeys: %s", err)
   }
 
+
   // DEBUG
   //delete(remoteKeys, "images/8dbd9e392a964056420e5d58ca5cc376ef18e2de93b5cc90e868a1bbc8318c1c/layer.tar.lz4")
 
-  for key, localKey := range localKeys.NotIn(remoteKeys) {
+
+  fmt.Println("got", len(localKeys.NotIn(remoteKeys)))
+
+  keysToPush := localKeys.NotIn(remoteKeys)
+
+  if len(keysToPush) == 0 {
+    fmt.Println("nothing to push")
+    return nil
+  }
+
+
+  for key, localKey := range keysToPush {
     fmt.Printf("pushing key %s (%s)\n", key, utils.FileHumanSize(localKey.fullPath))
 
     if err := remote.putFile(localKey.fullPath, localKey); err != nil {
