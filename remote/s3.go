@@ -118,6 +118,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
     return nil
   }
 
+  // TODO parallelise this
   for key, localKey := range keysToPush {
     fmt.Printf("pushing key %s (%s)\n", key, utils.FileHumanSize(localKey.fullPath))
 
@@ -417,6 +418,8 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
 
 // get a single file from the s3 bucket
 func (remote *S3Remote) getFile(dst string, key *keyDef) error {
+  fmt.Printf("pulling key %s (%s)\n", key.key, utils.HumanSize(key.s3Key.Size))
+
   srcKey := remote.remoteKey(key.key)
 
   from, err := remote.getBucket().GetReader(srcKey)
@@ -435,14 +438,16 @@ func (remote *S3Remote) getFile(dst string, key *keyDef) error {
     return err
   }
 
-  wrote,err := io.Copy(to, bufFrom)
+  // TODO add progress reader
+  progressReaderFrom := utils.NewProgressReader(bufFrom, key.s3Key.Size, os.Stdout)
+
+  _,err = io.Copy(to, progressReaderFrom)
   if err != nil {
     return err
   }
 
   // TODO validate against sum
 
-  fmt.Printf("pulled key %s (%s)\n", key, utils.HumanSize(wrote))
 
   return nil
 }
