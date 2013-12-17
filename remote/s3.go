@@ -379,6 +379,7 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 
   progressReader := utils.NewProgressReader(f, finfo.Size(), os.Stdout)
 
+  // XXX We don't know how big the file will be ahead of time!
   //compressorReader,err := remote.compressor.CompressReader(progressReader)
   //if err != nil {
     //return err
