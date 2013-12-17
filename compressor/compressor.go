@@ -7,6 +7,8 @@ import (
   "os/exec"
   "strings"
   "fmt"
+
+  "io"
 )
 
 type Compressor struct {
@@ -44,6 +46,24 @@ func (cmp Compressor) Compress(path string) error {
   }
 
   return os.Remove(path)
+}
+
+
+func (cmp Compressor) CompressReader(r io.Reader) (out io.Reader, err error) {
+  cmd := exec.Command(cmp.lz4Path, "-")
+
+  cmd.Stdin = r
+  out,err = cmd.StdoutPipe()
+  if err != nil {
+    return
+  }
+
+  err = cmd.Start()
+  if err != nil {
+    return
+  }
+
+  return
 }
 
 
