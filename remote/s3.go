@@ -28,13 +28,6 @@ type S3Remote struct {
 }
 
 
-type keyDef struct {
-  key string
-  s3Key s3.Key
-  sum string
-  fullPath string
-}
-
 var (
   S3DefaultRegion = "us-west-2"
 )
@@ -109,8 +102,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
   //delete(remoteKeys, "images/8dbd9e392a964056420e5d58ca5cc376ef18e2de93b5cc90e868a1bbc8318c1c/layer.tar.lz4")
 
 
-  fmt.Println("got", len(localKeys.NotIn(remoteKeys)))
-
+  fmt.Println("comparing keys")
   keysToPush := localKeys.NotIn(remoteKeys)
 
   if len(keysToPush) == 0 {
@@ -118,6 +110,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
     return nil
   }
 
+  return nil // DEBUG
 
   for key, localKey := range keysToPush {
     fmt.Printf("pushing key %s (%s)\n", key, utils.FileHumanSize(localKey.fullPath))
@@ -212,19 +205,36 @@ func (remote *S3Remote) getBucket() *s3.Bucket {
 
 
 
+type keyDef struct {
+  key string
+  sumKey string
+
+  sum string
+
+  s3Key s3.Key
+  fullPath string
+
+  remote *S3Remote
+}
+
+
 // keys represents either local or remote files
 type keys map[string]*keyDef
 
 // gets a key, creating the underlying keyDef if required
-func (k keys) Get(key string) *keyDef {
+// we need to S3Remote for getting the sum, so add it here
+func (k keys) Get(key string, remote *S3Remote) *keyDef {
   if existing,ok := k[key]; ok {
     return existing
   } else {
-    k[key] = &keyDef{key: key}
+    k[key] = &keyDef{key: key, remote: remote}
   }
 
   return k[key]
 }
+
+
+
 
 // Returns keys either not existing in other, 
 // or whose sum doesn't match.
@@ -232,13 +242,39 @@ func (k keys) NotIn(other keys) keys {
   notIn := make(keys)
 
   for key,thisKeyDef := range k {
-    if otherKeyDef, ok := other[key]; !ok || otherKeyDef.sum != thisKeyDef.sum {
+    if otherKeyDef, ok := other[key]; !ok || otherKeyDef.Sum() != thisKeyDef.Sum() {
       notIn[key] = thisKeyDef
     }
   }
 
   return notIn
 }
+
+
+func (kd *keyDef) Sum() (sum string) {
+  if kd.sum != "" {
+    return kd.sum
+  }
+
+  if kd.sumKey == "" {
+    return ""
+  }
+
+  // get sum!
+  // honestly there's not much we can do if we don't get the sum here
+  // maybe a panic??
+  bytesSum,err := kd.remote.getBucket().Get(kd.sumKey)
+  if err != nil {
+    return ""
+  }
+
+  kd.sum = string(bytesSum)
+
+  return kd.sum
+}
+
+
+
 
 // get repository keys from s3
 func (remote *S3Remote) repoKeys(prefix string) (keys, error) {
@@ -262,16 +298,10 @@ func (remote *S3Remote) repoKeys(prefix string) (keys, error) {
 
     if strings.HasSuffix(plainKey, ".sum") {
       plainKey = strings.TrimSuffix(plainKey, ".sum")
-
-      bytesSum,err := bucket.Get(key.Key)
-      if err != nil {
-        return repoKeys, err
-      }
-
-      repoKeys.Get(plainKey).sum = string(bytesSum)
+      repoKeys.Get(plainKey, remote).sumKey = key.Key
 
     } else {
-      repoKeys.Get(plainKey).s3Key = key
+      repoKeys.Get(plainKey, remote).s3Key = key
     }
   }
 
@@ -299,6 +329,7 @@ func (remote *S3Remote) localKeys(root string) (keys, error) {
 
     key := strings.TrimPrefix(path, root)
 
+    // note that we pre-populate the sum here
     localKeys[key] = &keyDef{
       key: key,
       sum: sum,
