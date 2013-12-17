@@ -61,7 +61,11 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 }
 
 func (cli *DogestryCli) preparePullImage(fromId remote.ID, imageRoot string, r remote.Remote) error {
-  return r.WalkImages(fromId, func(id remote.ID, image client.Image, err error) error {
+  toDownload := make([]remote.ID, 0)
+
+  // TODO flatten this list, then iterate and pull each required file
+  // TODO parallelize
+  err := r.WalkImages(fromId, func(id remote.ID, image client.Image, err error) error {
     fmt.Printf("examining id '%s' on remote\n", id.Short())
     if err != nil {
       fmt.Println("err", err)
@@ -70,15 +74,30 @@ func (cli *DogestryCli) preparePullImage(fromId remote.ID, imageRoot string, r r
 
     _, err = cli.client.InspectImage(string(id))
     if err == client.ErrNoSuchImage {
-      return cli.pullImage(id, filepath.Join(imageRoot, string(id)), r)
+      toDownload = append(toDownload, id)
+      return nil
     } else {
       fmt.Printf("docker already has id '%s', stopping\n", id.Short())
       return remote.BreakWalk
     }
   })
+
+  if err != nil {
+    return err
+  }
+
+  for _,id := range toDownload {
+    if err := cli.pullImage(id, filepath.Join(imageRoot, string(id)), r); err != nil {
+      return err
+    }
+  }
+
+  return nil
 }
 
+
 func (cli *DogestryCli) pullImage(id remote.ID, dst string, r remote.Remote) error {
+  // XXX fix image name rewrite
   err := r.PullImageId(id, dst)
   if err != nil {
     return err
