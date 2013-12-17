@@ -7,6 +7,7 @@ import (
 
   "bufio"
   "dogestry/client"
+	"dogestry/compressor"
   "encoding/json"
 
 
@@ -25,6 +26,7 @@ type S3Remote struct {
   Bucket     *s3.Bucket
   KeyPrefix  string
   client     *s3.S3
+  compressor compressor.Compressor
 }
 
 
@@ -41,11 +43,17 @@ func NewS3Remote(config RemoteConfig) (*S3Remote, error) {
   url := config.Url
   prefix := strings.TrimPrefix(url.Path, "/")
 
+  compressor,err := compressor.NewCompressor(config.Config)
+  if err != nil {
+    return nil,err
+  }
+
   return &S3Remote{
     config: config,
     BucketName: url.Host,
     KeyPrefix:  prefix,
     client:     s3,
+    compressor: compressor,
   }, nil
 }
 
@@ -109,8 +117,6 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
     fmt.Println("nothing to push")
     return nil
   }
-
-  return nil // DEBUG
 
   for key, localKey := range keysToPush {
     fmt.Printf("pushing key %s (%s)\n", key, utils.FileHumanSize(localKey.fullPath))
@@ -373,12 +379,17 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 
   progressReader := utils.NewProgressReader(f, finfo.Size(), os.Stdout)
 
+  //compressorReader,err := remote.compressor.CompressReader(progressReader)
+  //if err != nil {
+    //return err
+  //}
+
   err = remote.getBucket().PutReader(dstKey, progressReader, finfo.Size(), "application/octet-stream", s3.Private)
   if err != nil {
     return err
   }
 
-  return remote.getBucket().Put(dstKey+".sum", []byte(key.sum), "text/plain", s3.Private)
+  return remote.getBucket().Put(dstKey+".sum", []byte(key.Sum()), "text/plain", s3.Private)
 }
 
 
@@ -450,3 +461,12 @@ func (remote *S3Remote) remoteKey(key string) string {
   return path.Join(remote.KeyPrefix, key)
 }
 
+
+
+// TODO readd
+      //// special case - compress layer.tar
+      //if filepath.Base(dest) == "layer.tar" {
+        //if err := cli.compressor.Compress(dest); err != nil {
+          //return err
+        //}
+      //}

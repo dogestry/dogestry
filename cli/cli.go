@@ -3,7 +3,6 @@ package cli
 import (
 	"dogestry/client"
 	"dogestry/config"
-	"dogestry/compressor"
 
 	"flag"
 	"fmt"
@@ -35,21 +34,14 @@ type DogestryCli struct {
 	err     io.Writer
 	tempDir string
   Config  config.Config
-  compressor compressor.Compressor
 }
 
 
 func NewDogestryCli(client *client.Client, config config.Config) (*DogestryCli,error) {
-  c,err := compressor.NewCompressor(config)
-  if err != nil {
-    return nil,err
-  }
-
 	return &DogestryCli{
     Config: config,
 		client: *client,
 		err:    os.Stderr,
-    compressor: c,
 	}, nil
 }
 

@@ -10,7 +10,6 @@ import (
   "io"
   "io/ioutil"
   "os"
-  "os/exec"
   "path/filepath"
   "strings"
 )
@@ -140,13 +139,6 @@ func (cli *DogestryCli) processTarEntry(root string, header *tar.Header, tarball
         fmt.Printf("  tar: wrote %s\n", utils.HumanSize(wrote))
       }
       destFile.Close()
-
-      // special case - compress layer.tar
-      if filepath.Base(dest) == "layer.tar" {
-        if err := cli.compressor.Compress(dest); err != nil {
-          return err
-        }
-      }
     }
   }
 
@@ -181,15 +173,3 @@ func writeRepositories(root string, tarball io.Reader) error {
 }
 
 
-
-// compress using lz4
-// would use go version if we could (needs a streaming version)
-// lz4 is low compression, but extremely fast
-func compress(path string) error {
-  err := exec.Command("./lz4", path, path+".lz4").Run()
-  if err != nil {
-    return err
-  }
-
-  return os.Remove(path)
-}

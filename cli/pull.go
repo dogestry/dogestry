@@ -86,9 +86,9 @@ func (cli *DogestryCli) pullImage(id remote.ID, dst string, r remote.Remote) err
   return cli.processPulled(id, dst)
 }
 
+// no-op for now
 func (cli *DogestryCli) processPulled(id remote.ID, dst string) error {
-  compressedLayerFile := filepath.Join(dst, "layer.tar.lz4")
-  return cli.compressor.Decompress(compressedLayerFile)
+  return nil
 }
 
 func prepareRepositories(image, imageRoot string, r remote.Remote) error {
