@@ -131,8 +131,8 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 }
 
 func (remote *S3Remote) PullImageId(id ID, dst string) error {
-  rootKey := "/images/" + string(id)
-  imageKeys, err := remote.repoKeys(rootKey)
+  rootKey := "images/" + string(id)
+  imageKeys, err := remote.repoKeys("/"+rootKey)
   if err != nil {
     return err
   }
@@ -239,8 +239,6 @@ func (k keys) Get(key string, remote *S3Remote) *keyDef {
 
   return k[key]
 }
-
-
 
 
 // Returns keys either not existing in other, 
@@ -407,6 +405,8 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
   for _, keyDef := range imageKeys {
     relKey := strings.TrimPrefix(keyDef.key, rootKey)
+    relKey  = strings.TrimPrefix(relKey, "/")
+
     err := remote.getFile(filepath.Join(dst, relKey), keyDef)
     if err != nil {
       return err
