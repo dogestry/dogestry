@@ -137,8 +137,10 @@ repositories/myapp/latest       (content: 5d4e24b3d968cc6413a81f6f49566a0db80be4
 
 #### optional - compression
 
+(**This is switched off for the moment.**)
+
 I've chosen to use lz4 as the compression format as it's very fast and for `layer.tar` still seems to provide reasonable compression ratios. 
-There's a [go implementation][golz4] but there's no streaming version and I wouldn't know where to start in converting it.
+There's a [go implementation][golz4] but there's no streaming (i.e. `io.Reader`/`io.Writer`) version and I wouldn't know where to start in converting it.
 
 Given that remotes are generally, well, remote, I don't think it's a stretch to include compression for the portable repository format.
 
@@ -146,11 +148,22 @@ It probably should be optional though.
 
 Currently it's part of the Push/Pull command, but I intend to push the implementation down into the s3 remote.
 
+
+Lz4 was really impressive compressing layer.tar. Here are some rough numbers performed on a virtualbox vm:
+
+method       | size | compress                                   | decompress
+---          | ---  | ---                                        | ---
+uncompressed | 848M |                                            | 
+gzip         | 288M | 28.2s (real 0m28.279s user 0m27.440s sys 0m0.640s) | 5.9s (real 0m5.862s user 0m4.584s sys 0m1.044s)
+lz4          | 397M | 2.7s (real 0m2.697s user 0m0.000s sys 0m0.000s   | 1.4s (real 0m1.473s user 0m0.548s sys 0m0.668s)
+
+
+
 #### optional - checksumming
 
 Some remotes support cheap checksumming by default, others don't.
 
-I've implemented checksumming as part of the s3 remote.
+I've implemented checksumming as part of the s3 remote since it turns out that what seems like cheap checksumming (ETag for each s3 object) isn't always the md5 of the object.
 
 ## docker changes
 * dogestry can work with docker as-is
@@ -162,9 +175,9 @@ I've implemented checksumming as part of the s3 remote.
 ## TODO
 
 - more tests.
-- move compression into remote.
 - more remotes.
 - more tag operations
+- tree pruning
 
 
 ## conclusion
