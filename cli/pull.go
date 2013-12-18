@@ -147,8 +147,10 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
     return nil
   }
 
+  // DEBUG - write out a tar to see what's there!
+  // exec.Command("/bin/tar", "cvf", "/tmp/d.tar", "-C", imageRoot, ".").Run()
 
-  cmd := exec.Command("/bin/tar", "cvf", "-", ".")
+  cmd := exec.Command("/bin/tar", "cvf", "-", "-C", imageRoot, ".")
   cmd.Dir = imageRoot
   defer cmd.Wait()
 
