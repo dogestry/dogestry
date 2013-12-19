@@ -44,6 +44,24 @@ For example, using the config file, you can set up remote aliases for convenienc
 However, if you're bootstrapping a system, you might rely on IAM instance profiles for credentials and specify the
 remote using its full url.
 
+## operation
+
+Dogestry push works by
+* transforming the output of `docker save` into a local repository in a portable repository format.
+  * writing self contained image data.
+  * unrolling the repositories json into a directory of files.
+* efficiently synchronising the local repository with a remote (e.g. s3, local disk)
+  * we only write images not already existing on the remote.
+
+Dogestry pull works by
+* resolving the requested image name or id by querying the remote:
+  * it could be a mapping from a docker "repostitory:tag" pair to an id.
+  * it could be the prefix of an image id which exists on the remote.
+* efficiently synchronise images from the remote.
+  * walk the ancetry of the requested image until we reach an image that the local docker already has.
+  * download the required images.
+* preparing a tarball in the format needed by `docker load` and sending it to docker.
+
 ## discussion
 
 In my organisation docker will be the way for us to move away from Capistrano's [`cap deploy`][cap].
