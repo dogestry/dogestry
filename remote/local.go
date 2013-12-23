@@ -1,7 +1,7 @@
 package remote
 
 import (
-  "dogestry/client"
+  "github.com/blake-education/dogestry/client"
 
   "encoding/json"
   "fmt"

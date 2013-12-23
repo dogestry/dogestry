@@ -1,8 +1,8 @@
 package remote
 
 import (
-  "dogestry/client"
-  "dogestry/config"
+  "github.com/blake-education/dogestry/client"
+  "github.com/blake-education/dogestry/config"
   "errors"
   "fmt"
   "net/url"

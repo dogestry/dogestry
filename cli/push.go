@@ -1,8 +1,8 @@
 package cli
 
 import (
-  "dogestry/remote"
-  "dogestry/utils"
+  "github.com/blake-education/dogestry/remote"
+  "github.com/blake-education/dogestry/utils"
   "encoding/json"
 
   "archive/tar"

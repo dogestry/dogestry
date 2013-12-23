@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"dogestry/remote"
+	"github.com/blake-education/dogestry/remote"
 	"fmt"
 )
 

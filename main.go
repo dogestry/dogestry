@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	//"os"
-	"dogestry/cli"
-	"dogestry/client"
+	"github.com/blake-education/dogestry/cli"
+	"github.com/blake-education/dogestry/client"
 	"log"
 )
 

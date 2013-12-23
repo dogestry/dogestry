@@ -1,7 +1,7 @@
 package compressor
 
 import (
-  "dogestry/config"
+  "github.com/blake-education/dogestry/config"
 
   "os"
   "os/exec"

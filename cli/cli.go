@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"dogestry/client"
-	"dogestry/config"
+	"github.com/blake-education/dogestry/client"
+	"github.com/blake-education/dogestry/config"
 
 	"flag"
 	"fmt"

@@ -3,11 +3,11 @@ package remote
 import (
   "github.com/lachie/goamz/aws"
   "github.com/lachie/goamz/s3"
-  "dogestry/utils"
+  "github.com/blake-education/dogestry/utils"
 
   "bufio"
-  "dogestry/client"
-	"dogestry/compressor"
+  "github.com/blake-education/dogestry/client"
+	"github.com/blake-education/dogestry/compressor"
   "encoding/json"
 
 
