@@ -37,10 +37,20 @@ type DogestryCli struct {
 }
 
 
-func NewDogestryCli(client *client.Client, config config.Config) (*DogestryCli,error) {
+func NewDogestryCli(config config.Config) (*DogestryCli,error) {
+  dockerConnection := config.Docker.Connection
+  if dockerConnection == "" {
+    dockerConnection = "unix:///var/run/docker.sock"
+  }
+	newClient, err := client.NewClient(dockerConnection)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return &DogestryCli{
     Config: config,
-		client: *client,
+		client: *newClient,
 		err:    os.Stderr,
 	}, nil
 }
@@ -56,13 +66,13 @@ func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
 	return method.Interface().(func(...string) error), true
 }
 
-func ParseCommands(configFilePath string, client *client.Client, args ...string) error {
+func ParseCommands(configFilePath string, args ...string) error {
   config,err := parseConfig(configFilePath)
   if err != nil {
     return err
   }
 
-	cli,err := NewDogestryCli(client, config)
+	cli,err := NewDogestryCli(config)
   if err != nil {
     return err
   }
