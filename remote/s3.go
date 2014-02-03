@@ -284,8 +284,12 @@ func (kd *keyDef) Sum() (sum string) {
 // get repository keys from s3
 func (remote *S3Remote) repoKeys(prefix string) (keys, error) {
   repoKeys := make(keys)
-  remotePrefix := remote.KeyPrefix + "/"
-  bucketPrefix := remote.KeyPrefix + prefix
+
+  prefix = strings.TrimLeft(strings.TrimRight(prefix, "/"), "/")
+  keyPrefix := strings.TrimRight(remote.KeyPrefix, "/")
+
+  bucketPrefix := keyPrefix + "/" + prefix
+  remotePrefix := keyPrefix
 
   bucket := remote.getBucket()
 
