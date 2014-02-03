@@ -71,8 +71,6 @@ func (c *Client) InspectContainer(id string) (*Container, error) {
     return nil, err
   }
 
-  fmt.Println("cont", id, body)
-
   var container Container
   err = json.Unmarshal(body, &container)
   if err != nil {
