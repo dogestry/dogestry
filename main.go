@@ -4,7 +4,7 @@ import (
 	"flag"
 	//"os"
 	"github.com/blake-education/dogestry/cli"
-	"github.com/blake-education/dogestry/client"
+  docker "github.com/blake-education/go-dockerclient"
 	"log"
 )
 
@@ -16,7 +16,7 @@ func main() {
 	flag.Parse()
 
 
-	client, err := client.NewClient("unix:///var/run/docker.sock")
+	client, err := docker.NewClient("unix:///var/run/docker.sock")
 	if err != nil {
 		log.Fatal(err)
 	}

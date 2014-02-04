@@ -1,7 +1,7 @@
 package cli
 
 import (
-  "github.com/blake-education/dogestry/client"
+  docker "github.com/blake-education/go-dockerclient"
   "github.com/blake-education/dogestry/remote"
   "encoding/json"
   "fmt"
@@ -65,7 +65,7 @@ func (cli *DogestryCli) preparePullImage(fromId remote.ID, imageRoot string, r r
 
   // TODO flatten this list, then iterate and pull each required file
   // TODO parallelize
-  err := r.WalkImages(fromId, func(id remote.ID, image client.Image, err error) error {
+  err := r.WalkImages(fromId, func(id remote.ID, image docker.Image, err error) error {
     fmt.Printf("examining id '%s' on remote\n", id.Short())
     if err != nil {
       fmt.Println("err", err)
@@ -73,7 +73,7 @@ func (cli *DogestryCli) preparePullImage(fromId remote.ID, imageRoot string, r r
     }
 
     _, err = cli.client.InspectImage(string(id))
-    if err == client.ErrNoSuchImage {
+    if err == docker.ErrNoSuchImage {
       toDownload = append(toDownload, id)
       return nil
     } else {

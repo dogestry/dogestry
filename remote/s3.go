@@ -6,7 +6,7 @@ import (
   "github.com/blake-education/dogestry/utils"
 
   "bufio"
-  "github.com/blake-education/dogestry/client"
+  docker "github.com/blake-education/go-dockerclient"
 	"github.com/blake-education/dogestry/compressor"
   "encoding/json"
 
@@ -184,9 +184,9 @@ func (remote *S3Remote) WalkImages(id ID, walker ImageWalkFn) error {
 }
 
 
-func (remote *S3Remote) ImageMetadata(id ID) (client.Image, error) {
+func (remote *S3Remote) ImageMetadata(id ID) (docker.Image, error) {
   jsonPath := path.Join(remote.imagePath(id), "json")
-  image := client.Image{}
+  image := docker.Image{}
 
   imageJson, err := remote.getBucket().Get(jsonPath)
   if s3err, ok := err.(*s3.Error); ok && s3err.StatusCode == 404 {

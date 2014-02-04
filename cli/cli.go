@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"github.com/blake-education/dogestry/client"
+  docker "github.com/blake-education/go-dockerclient"
 	"github.com/blake-education/dogestry/config"
 
 	"flag"
@@ -30,14 +30,14 @@ var (
 
 
 type DogestryCli struct {
-	client  client.Client
+	client  docker.Client
 	err     io.Writer
 	tempDir string
   Config  config.Config
 }
 
 
-func NewDogestryCli(client *client.Client, config config.Config) (*DogestryCli,error) {
+func NewDogestryCli(client *docker.Client, config config.Config) (*DogestryCli,error) {
 	return &DogestryCli{
     Config: config,
 		client: *client,
@@ -56,7 +56,7 @@ func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
 	return method.Interface().(func(...string) error), true
 }
 
-func ParseCommands(configFilePath string, client *client.Client, args ...string) error {
+func ParseCommands(configFilePath string, client *docker.Client, args ...string) error {
   config,err := parseConfig(configFilePath)
   if err != nil {
     return err

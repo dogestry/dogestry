@@ -1,7 +1,7 @@
 package remote
 
 import (
-  "github.com/blake-education/dogestry/client"
+  docker "github.com/blake-education/go-dockerclient"
 
   "encoding/json"
   "fmt"
@@ -90,8 +90,8 @@ func (remote *LocalRemote) ParseTag(repo, tag string) (ID, error) {
   }
 }
 
-func (remote *LocalRemote) ImageMetadata(id ID) (client.Image, error) {
-  image := client.Image{}
+func (remote *LocalRemote) ImageMetadata(id ID) (docker.Image, error) {
+  image := docker.Image{}
 
   imageJson, err := ioutil.ReadFile(filepath.Join(remote.imagePath(id), "json"))
   if os.IsNotExist(err) {

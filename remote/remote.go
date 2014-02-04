@@ -1,7 +1,7 @@
 package remote
 
 import (
-  "github.com/blake-education/dogestry/client"
+  docker "github.com/blake-education/go-dockerclient"
   "github.com/blake-education/dogestry/config"
   "errors"
   "fmt"
@@ -27,7 +27,7 @@ type RemoteConfig struct {
 }
 
 
-type ImageWalkFn func(id ID, image client.Image, err error) error
+type ImageWalkFn func(id ID, image docker.Image, err error) error
 
 type Remote interface {
   // push image and parent images to remote
@@ -44,7 +44,7 @@ type Remote interface {
 
   ImageFullId(id ID) (ID, error)
 
-  ImageMetadata(id ID) (client.Image, error)
+  ImageMetadata(id ID) (docker.Image, error)
 
   // walk the image history on the remote, starting at id
   WalkImages(id ID, walker ImageWalkFn) error
@@ -160,7 +160,7 @@ func WalkImages(remote Remote, id ID, walker ImageWalkFn) error {
   img, err := remote.ImageMetadata(id)
   // image wasn't found
   if err != nil {
-    return walker(id, client.Image{}, err)
+    return walker(id, docker.Image{}, err)
   }
 
   err = walker(id, img, nil)
