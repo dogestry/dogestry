@@ -90,20 +90,22 @@ func (s *S) TestBucket(c *C) {
 func (s *S) TestRepoKeys(c *C) {
   nelsonSha := "123"
 
-  testServer.Response(200, nil, "content")
+  //testServer.Response(200, nil, "content")
   testServer.Response(200, nil, GetListResultDump1)
   testServer.Response(200, nil, nelsonSha)
 
 	keys,err := s.remote.repoKeys("")
 	c.Assert(err, IsNil)
 
-	testServer.WaitRequest()
+	testServer.WaitRequests(2)
+
+  c.Log(keys["Nelson"])
 
   c.Assert(keys["Nelson"].key, Equals, "Nelson")
-  c.Assert(keys["Nelson"].sum, Equals, nelsonSha)
+  c.Assert(keys["Nelson"].Sum(), Equals, nelsonSha)
 
   c.Assert(keys["Neo"].key, Equals, "Neo")
-  c.Assert(keys["Neo"].sum, Equals, "")
+  c.Assert(keys["Neo"].Sum(), Equals, "")
 }
 
 
@@ -122,6 +124,30 @@ func (s *S) TestLocalKeys(c *C) {
   c.Assert(keys["dir/file2"].fullPath, Equals, filepath.Join(s.tempDir,"dir/file2"))
   c.Assert(keys["dir/file2"].sum, Equals, "dd6944c43fabd03cf643fe0daf625759dbdea808")
 }
+
+
+func (s *S) TestResolveImageNameToId(c *C) {
+  rubyId := "123"
+
+  testServer.Response(200, nil, "123")
+
+  id,err := s.remote.ResolveImageNameToId("ruby")
+  c.Assert(err, IsNil)
+
+  c.Assert(string(id), Equals, rubyId)
+
+
+  testServer.Flush()
+  testServer.Response(404, nil, "")
+
+  id,err = s.remote.ResolveImageNameToId("rubyx")
+  c.Assert(err, Not(IsNil))
+}
+
+
+//func (s *S) TestGetFiles(c *C) {
+  //s.remote.getFiles(s.tempDir, )
+//}
 
 
 func dumpFile(temp, filename, content string) error {

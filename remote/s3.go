@@ -289,7 +289,8 @@ func (remote *S3Remote) repoKeys(prefix string) (keys, error) {
   keyPrefix := strings.TrimRight(remote.KeyPrefix, "/")
 
   bucketPrefix := keyPrefix + "/" + prefix
-  remotePrefix := keyPrefix
+  remotePrefix := keyPrefix + "/"
+
 
   bucket := remote.getBucket()
 
@@ -302,6 +303,7 @@ func (remote *S3Remote) repoKeys(prefix string) (keys, error) {
     if key.Key == "" {
       continue
     }
+
 
     plainKey := strings.TrimPrefix(key.Key, remotePrefix)
 
