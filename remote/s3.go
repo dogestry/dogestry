@@ -43,17 +43,17 @@ func NewS3Remote(config RemoteConfig) (*S3Remote, error) {
   url := config.Url
   prefix := strings.TrimPrefix(url.Path, "/")
 
-  compressor,err := compressor.NewCompressor(config.Config)
-  if err != nil {
-    return nil,err
-  }
+  //compressor,err := compressor.NewCompressor(config.Config)
+  //if err != nil {
+    //return nil,err
+  //}
 
   return &S3Remote{
     config: config,
     BucketName: url.Host,
     KeyPrefix:  prefix,
     client:     s3,
-    compressor: compressor,
+    //compressor: compressor,
   }, nil
 }
 
