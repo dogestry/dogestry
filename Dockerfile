@@ -5,6 +5,7 @@ RUN apt-get update && \
       apt-get -y install \
       curl \
       git \
+      ca-certificates \
       --no-install-recommends
 
 RUN curl -s https://go.googlecode.com/files/go1.2.linux-amd64.tar.gz | tar -v -C /usr/local -xz
