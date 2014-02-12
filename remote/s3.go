@@ -86,6 +86,19 @@ func getS3Auth(config RemoteConfig) (aws.Auth, error) {
 }
 
 
+func (remote *S3Remote) Validate() error {
+  bucket := remote.getBucket()
+  list,err := bucket.List("", "/", "", 1)
+  if err != nil {
+    return fmt.Errorf("%s unable to ping s3 bucket: %s", remote.Desc(), err)
+  }
+
+  fmt.Println("b", bucket)
+  fmt.Println("list", list)
+  return nil
+}
+
+
 // Remote: describe the remote
 func (remote *S3Remote) Desc() string {
   return fmt.Sprintf("s3(bucket=%s, prefix=%s)", remote.BucketName, remote.KeyPrefix)

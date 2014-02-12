@@ -49,25 +49,36 @@ type Remote interface {
   // walk the image history on the remote, starting at id
   WalkImages(id ID, walker ImageWalkFn) error
 
+  // checks the config and connectivity of the remote
+  Validate() error
+
   // describe the remote
   Desc() string
 }
 
 
-func NewRemote(remote string, config config.Config) (Remote, error) {
-  remoteConfig, err := resolveConfig(remote, config)
+func NewRemote(remoteName string, config config.Config) (remote Remote, err error) {
+  remoteConfig, err := resolveConfig(remoteName, config)
   if err != nil {
-    return nil, err
+    return
   }
 
   switch remoteConfig.Kind {
   case "local":
-    return NewLocalRemote(remoteConfig)
+    remote,err = NewLocalRemote(remoteConfig)
   case "s3":
-    return NewS3Remote(remoteConfig)
+    remote,err = NewS3Remote(remoteConfig)
   default:
-    return nil, fmt.Errorf("unknown remote type '%s'", remoteConfig.Kind)
+    err = fmt.Errorf("unknown remote type '%s'", remoteConfig.Kind)
+    return
   }
+
+  if err != nil {
+    return
+  }
+
+  err = remote.Validate()
+  return
 }
 
 

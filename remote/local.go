@@ -30,6 +30,10 @@ func NewLocalRemote(config RemoteConfig) (*LocalRemote, error) {
   }, nil
 }
 
+func (remote *LocalRemote) Validate() error {
+  return nil
+}
+
 func (remote *LocalRemote) Desc() string {
   return fmt.Sprintf("local(%s)", remote.Path)
 }
