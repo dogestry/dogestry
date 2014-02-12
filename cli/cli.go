@@ -43,7 +43,7 @@ func NewDogestryCli(config config.Config) (*DogestryCli,error) {
     dockerConnection = "unix:///var/run/docker.sock"
   }
 
-	newClient, err := client.NewClient(dockerConnection)
+	newClient, err := docker.NewClient(dockerConnection)
 	if err != nil {
 		log.Fatal(err)
 	}

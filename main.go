@@ -4,7 +4,6 @@ import (
 	"flag"
 	//"os"
 	"github.com/blake-education/dogestry/cli"
-  docker "github.com/blake-education/go-dockerclient"
 	"log"
 )
 
