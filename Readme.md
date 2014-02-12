@@ -10,7 +10,7 @@ Proof of concept for simple image storage for docker.
 
 Currently, the user running dogestry needs permissions to access the docker socket. [See here for more info][docker-sudo]
 
-Currently the docker socket's location isn't configurable.
+The docker connection is local socket (`unix:///var/run/docker.sock`) as default. But is overridable configuring `connection` in `[docker]` entry in `dogestry.cfg`.
 
 ## usage
 
