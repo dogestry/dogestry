@@ -1,3 +1,5 @@
+<a href="https://imgflip.com/i/6v6ii"><img src="https://i.imgflip.com/6v6ii.jpg" title="made at imgflip.com"/></a>
+
 # dogestry
 
 Proof of concept for simple image storage for docker.
