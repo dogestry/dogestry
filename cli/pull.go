@@ -76,6 +76,8 @@ func (cli *DogestryCli) preparePullImage(fromId remote.ID, imageRoot string, r r
     if err == docker.ErrNoSuchImage {
       toDownload = append(toDownload, id)
       return nil
+    } else if err != nil {
+      return err
     } else {
       fmt.Printf("docker already has id '%s', stopping\n", id.Short())
       return remote.BreakWalk
