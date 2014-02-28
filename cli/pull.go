@@ -6,12 +6,13 @@ import (
   "encoding/json"
   "fmt"
   "os"
+  "io/ioutil"
   "os/exec"
   "path/filepath"
 )
 
 func (cli *DogestryCli) CmdPull(args ...string) error {
-  cmd := cli.Subcmd("push", "REMOTE IMAGE[:TAG]", "pull IMAGE from the REMOTE and load it into docker. TAG defaults to 'latest'")
+  cmd := cli.Subcmd("pull", "REMOTE IMAGE[:TAG]", "pull IMAGE from the REMOTE and load it into docker. TAG defaults to 'latest'")
   if err := cmd.Parse(args); err != nil {
     return nil
   }
@@ -183,13 +184,12 @@ func dirNotExistOrEmpty(path string) (bool,error) {
   }
   defer imagesDir.Close()
 
-  names, err := imagesDir.Readdirnames(-1)
+  names, err := ioutil.ReadDir(path)
   if err != nil {
     return false,err
   }
 
-
-  if len(names) <= 0 {
+  if len(names) <= 1 {
     return true,nil
   }
 
