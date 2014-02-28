@@ -123,7 +123,7 @@ func (cli *DogestryCli) CmdHelp(args ...string) error {
  Alternate registry and simple image storage for docker.
   Typical S3 Usage:
      export AWS_ACCESS_KEY=ABC
-     export export AWS_SECRET_KEY=DEF
+     export AWS_SECRET_KEY=DEF
      dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
   Commands:
      pull - Pull an image from a remote
