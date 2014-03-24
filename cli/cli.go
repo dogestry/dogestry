@@ -97,7 +97,7 @@ func parseConfig(configFilePath string) (cfg config.Config,err error) {
     if _,err := os.Stat(DefaultConfigFilePath); !os.IsNotExist(err) {
       configFilePath = DefaultConfigFilePath
     } else {
-      fmt.Fprintln(os.Stderr, "Warning: no config file found, using default config")
+      fmt.Fprintln(os.Stdout, "Note: no config file found, using default config.")
       return DefaultConfig, nil
     }
   }
@@ -118,15 +118,19 @@ func (cli *DogestryCli) CmdHelp(args ...string) error {
   }
 
 
-    help := fmt.Sprintf("Usage: dogestry [OPTIONS] COMMAND [arg...]\nAlternate registry and simple image storage for docker.\n\nCommands:\n")
-	for _, command := range [][]string{
-		{"pull", "Pull an image from a remote"},
-		{"push", "Push an image to a remote"},
-		{"remote", "Check a remote"},
-	} {
-		help += fmt.Sprintf("    %-10.10s%s\n", command[0], command[1])
-	}
-	fmt.Println("%s\n", help)
+  help := fmt.Sprintf(
+`Usage: dogestry [OPTIONS] COMMAND [arg...]
+ Alternate registry and simple image storage for docker.
+  Typical S3 Usage:
+     export AWS_ACCESS_KEY=ABC
+     export AWS_SECRET_KEY=DEF
+     dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
+  Commands:
+     pull - Pull an image from a remote
+     push  - Push an image to a remote
+     remote - Check a remote
+`)
+  fmt.Println(help)
 	return nil
 }
 
@@ -173,4 +177,3 @@ func (cli *DogestryCli) Cleanup() {
 		}
 	}
 }
-

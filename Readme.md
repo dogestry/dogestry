@@ -3,6 +3,7 @@
 # dogestry
 
 Proof of concept for simple image storage for docker.
+This is a simple client you can run where you run docker - and you don't need a registry - it talks directly to s3 (for example). docker save/load is the mechanism used. 
 
 ## prerequisites
 
@@ -35,6 +36,12 @@ Pull the `hipache` image and tag from the `central`.
 dogestry pull central hipache
 ```
 
+And the s3 version: 
+
+```
+dogestry pull s3://ops-goodies/docker-repo/?region=us-west-2 hipache
+```
+
 ### config
 
 Configure dogestry with `dogestry.cfg`. By default it's looked for in `./dogestry.cfg`.
@@ -44,7 +51,23 @@ Dogestry can often run without a configuration file, but it's there if you need 
 For example, using the config file, you can set up remote aliases for convenience or specifiy s3 credentials.
 
 However, if you're bootstrapping a system, you might rely on IAM instance profiles for credentials and specify the
-remote using its full url.
+remote using its full url. 
+
+### S3
+
+When working with s3, you can use environment variables for credentials, or use signed URLs. The advantage of signed URLs is that you can tightly control the resouce access. 
+
+A common use case if you have a build server building and publishing images via dogestry (needs read write) - but when you deploy - dogestry only needs read access to s3, and can use signed urls (so you don't need any configuration - the URL contains all that is needed to pull the repository): 
+
+```
+  Typical S3 Usage:
+     export AWS_ACCESS_KEY=ABC
+     export export AWS_SECRET_KEY=DEF
+     dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
+     dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
+```
+
+
 
 ## operation
 
