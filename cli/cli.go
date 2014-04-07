@@ -1,8 +1,8 @@
 package cli
 
 import (
-  docker "github.com/blake-education/go-dockerclient"
 	"github.com/blake-education/dogestry/config"
+	docker "github.com/fsouza/go-dockerclient"
 
 	"flag"
 	"fmt"
@@ -13,35 +13,30 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-
 )
-
 
 var (
-  DefaultConfigFilePath = "./dogestry.cfg"
-  DefaultConfig = config.Config{
-    Remote: make(map[string]*config.RemoteConfig),
-    Compressor: config.CompressorConfig{
-      Lz4: "lz4",
-    },
-  }
+	DefaultConfigFilePath = "./dogestry.cfg"
+	DefaultConfig         = config.Config{
+		Remote: make(map[string]*config.RemoteConfig),
+		Compressor: config.CompressorConfig{
+			Lz4: "lz4",
+		},
+	}
 )
-
-
 
 type DogestryCli struct {
 	client  docker.Client
 	err     io.Writer
 	tempDir string
-  Config  config.Config
+	Config  config.Config
 }
 
-
-func NewDogestryCli(config config.Config) (*DogestryCli,error) {
-  dockerConnection := config.Docker.Connection
-  if dockerConnection == "" {
-    dockerConnection = "unix:///var/run/docker.sock"
-  }
+func NewDogestryCli(config config.Config) (*DogestryCli, error) {
+	dockerConnection := config.Docker.Connection
+	if dockerConnection == "" {
+		dockerConnection = "unix:///var/run/docker.sock"
+	}
 
 	newClient, err := docker.NewClient(dockerConnection)
 	if err != nil {
@@ -49,7 +44,7 @@ func NewDogestryCli(config config.Config) (*DogestryCli,error) {
 	}
 
 	return &DogestryCli{
-    Config: config,
+		Config: config,
 		client: *newClient,
 		err:    os.Stderr,
 	}, nil
@@ -67,15 +62,15 @@ func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
 }
 
 func ParseCommands(configFilePath string, args ...string) error {
-  config,err := parseConfig(configFilePath)
-  if err != nil {
-    return err
-  }
+	config, err := parseConfig(configFilePath)
+	if err != nil {
+		return err
+	}
 
-	cli,err := NewDogestryCli(config)
-  if err != nil {
-    return err
-  }
+	cli, err := NewDogestryCli(config)
+	if err != nil {
+		return err
+	}
 	defer cli.Cleanup()
 
 	if len(args) > 0 {
@@ -89,22 +84,20 @@ func ParseCommands(configFilePath string, args ...string) error {
 	return cli.CmdHelp(args...)
 }
 
+func parseConfig(configFilePath string) (cfg config.Config, err error) {
+	// no config file was specified
+	if configFilePath == "" {
+		// if default config exists use it
+		if _, err := os.Stat(DefaultConfigFilePath); !os.IsNotExist(err) {
+			configFilePath = DefaultConfigFilePath
+		} else {
+			fmt.Fprintln(os.Stdout, "Note: no config file found, using default config.")
+			return DefaultConfig, nil
+		}
+	}
 
-func parseConfig(configFilePath string) (cfg config.Config,err error) {
-  // no config file was specified
-  if configFilePath == "" {
-    // if default config exists use it
-    if _,err := os.Stat(DefaultConfigFilePath); !os.IsNotExist(err) {
-      configFilePath = DefaultConfigFilePath
-    } else {
-      fmt.Fprintln(os.Stdout, "Note: no config file found, using default config.")
-      return DefaultConfig, nil
-    }
-  }
-
-  return config.ParseConfig(configFilePath)
+	return config.ParseConfig(configFilePath)
 }
-
 
 func (cli *DogestryCli) CmdHelp(args ...string) error {
 	if len(args) > 0 {
@@ -115,11 +108,10 @@ func (cli *DogestryCli) CmdHelp(args ...string) error {
 			method("--help")
 			return nil
 		}
-  }
+	}
 
-
-  help := fmt.Sprintf(
-`Usage: dogestry [OPTIONS] COMMAND [arg...]
+	help := fmt.Sprintf(
+		`Usage: dogestry [OPTIONS] COMMAND [arg...]
  Alternate registry and simple image storage for docker.
   Typical S3 Usage:
      export AWS_ACCESS_KEY=ABC
@@ -130,7 +122,7 @@ func (cli *DogestryCli) CmdHelp(args ...string) error {
      push  - Push an image to a remote
      remote - Check a remote
 `)
-  fmt.Println(help)
+	fmt.Println(help)
 	return nil
 }
 
