@@ -2,10 +2,10 @@
 
 set -e
 
-d="docker"
+d="sudo docker"
 
 $d build -t dogestry .
-id=$($d inspect dogestry | jq -r '.[0].container')
+id=$($d inspect -f '{{ .container }}' dogestry)
 $d cp $id:dogestry .
 
 if [ -f "./push.sh" ]; then
