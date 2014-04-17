@@ -95,7 +95,7 @@ func (remote *S3Remote) Validate() error {
 
 // Remote: describe the remote
 func (remote *S3Remote) Desc() string {
-	return fmt.Sprintf("s3(bucket=%s, prefix=%s)", remote.BucketName, remote.KeyPrefix)
+	return fmt.Sprintf("s3(bucket=%s, prefix=%s, region=%s, accessKey=%s)", remote.BucketName, remote.KeyPrefix, remote.client.Region.Name, remote.client.Auth.AccessKey)
 }
 
 func (remote *S3Remote) Push(image, imageRoot string) error {
