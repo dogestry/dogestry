@@ -4,7 +4,8 @@ set -e
 
 d="sudo docker"
 
-$d build -t dogestry .
+# don't rm intermediate containers... we want them!
+$d build --rm=false -t dogestry .
 id=$($d inspect -f '{{ .container }}' dogestry)
 $d cp $id:dogestry .
 
