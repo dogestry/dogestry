@@ -2,4 +2,4 @@
 
 set -e
 
-GOPATH=$(pwd)/vendor/go:$GOPATH go run *.go 
+GOPATH=$(pwd)/vendor/go:$GOPATH go run *.go $*

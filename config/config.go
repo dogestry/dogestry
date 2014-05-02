@@ -1,35 +1,39 @@
 package config
 
 import (
-  "code.google.com/p/gcfg"
+	"code.google.com/p/gcfg"
 )
 
 type RemoteConfig struct {
-  Url string
+	Url string
 }
 
 type S3Config struct {
-  Access_Key_Id string
-  Secret_Key string
+	Access_Key_Id string
+	Secret_Key    string
 }
 
 type CompressorConfig struct {
-  Lz4 string
+	Lz4 string
 }
 
 type DockerConfig struct {
-  Connection string
+	Connection string
+}
+
+type DogestryConfig struct {
+	Temp_Dir string
 }
 
 type Config struct {
-  Remote map[string]*RemoteConfig
-  S3 S3Config
-  Compressor CompressorConfig
-  Docker DockerConfig
+	Remote     map[string]*RemoteConfig
+	S3         S3Config
+	Compressor CompressorConfig
+	Docker     DockerConfig
+	Dogestry   DogestryConfig
 }
 
-
 func ParseConfig(configFilePath string) (config Config, err error) {
-  err = gcfg.ReadFileInto(&config, configFilePath)
-  return
+	err = gcfg.ReadFileInto(&config, configFilePath)
+	return
 }

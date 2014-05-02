@@ -26,10 +26,11 @@ var (
 )
 
 type DogestryCli struct {
-	client  docker.Client
-	err     io.Writer
-	tempDir string
-	Config  config.Config
+	client      docker.Client
+	err         io.Writer
+	tempDir     string
+	tempDirRoot string
+	Config      config.Config
 }
 
 func NewDogestryCli(config config.Config) (*DogestryCli, error) {
@@ -61,7 +62,7 @@ func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
 	return method.Interface().(func(...string) error), true
 }
 
-func ParseCommands(configFilePath string, args ...string) error {
+func ParseCommands(configFilePath string, tempDirRoot string, args ...string) error {
 	config, err := parseConfig(configFilePath)
 	if err != nil {
 		return err
@@ -72,6 +73,11 @@ func ParseCommands(configFilePath string, args ...string) error {
 		return err
 	}
 	defer cli.Cleanup()
+
+	cli.tempDirRoot = tempDirRoot
+	if cli.tempDirRoot == "" {
+		cli.tempDirRoot = config.Dogestry.Temp_Dir
+	}
 
 	if len(args) > 0 {
 		method, exists := cli.getMethod(args[0])
@@ -140,7 +146,13 @@ func (cli *DogestryCli) Subcmd(name, signature, description string) *flag.FlagSe
 // This dir is cleaned up on exit
 func (cli *DogestryCli) TempDir() string {
 	if cli.tempDir == "" {
-		if tempDir, err := ioutil.TempDir("", "dogestry"); err != nil {
+		if cli.tempDirRoot != "" {
+			if err := os.MkdirAll(cli.tempDirRoot, 0755); err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		if tempDir, err := ioutil.TempDir(cli.tempDirRoot, "dogestry"); err != nil {
 			log.Fatal(err)
 		} else {
 			cli.tempDir = tempDir
