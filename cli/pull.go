@@ -59,6 +59,12 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 		return err
 	}
 
+	// in the case where we already have the image, but its not tagged:
+	fmt.Println("ensuring tag")
+	if err := cli.retag(image, id); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -170,6 +176,10 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 
 	fmt.Println("kicking off post")
 	return cli.client.PostImageTarball(stdout)
+}
+
+func (cli *DogestryCli) retag(tag string, id remote.ID) error {
+	return cli.client.SetImageTag(id.String(), tag, false)
 }
 
 func dirNotExistOrEmpty(path string) (bool, error) {
