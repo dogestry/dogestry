@@ -2,8 +2,8 @@ package remote
 
 import (
 	"github.com/blake-education/dogestry/utils"
-	"github.com/lachie/goamz/aws"
-	"github.com/lachie/goamz/s3"
+	"github.com/mitchellh/goamz/aws"
+	"github.com/mitchellh/goamz/s3"
 
 	"bufio"
 	"encoding/json"
@@ -283,7 +283,7 @@ func (remote *S3Remote) repoKeys(prefix string) (keys, error) {
 
 	bucket := remote.getBucket()
 
-	cnt, err := bucket.GetBucketContentsWithPrefix(bucketPrefix)
+	cnt, err := bucket.GetBucketContentsFiltered(bucketPrefix, "", "")
 	if err != nil {
 		return repoKeys, fmt.Errorf("getting bucket contents at prefix '%s': %s", prefix, err)
 	}
