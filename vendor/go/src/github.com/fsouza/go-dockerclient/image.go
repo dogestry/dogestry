@@ -220,11 +220,24 @@ func isUrl(u string) bool {
 	return p.Scheme == "http" || p.Scheme == "https"
 }
 
-
 func (c *Client) GetImageTarball(imageName string, w io.Writer) error {
 	return c.stream("GET", "/images/"+imageName+"/get", nil, w)
 }
 
 func (c *Client) PostImageTarball(r io.Reader) error {
 	return c.stream("POST", "/images/load", r, nil)
+}
+
+type TagImageOptions struct {
+	Repo  string `qs:"repo"`
+	Force bool   `qs:"force"`
+}
+
+func (c *Client) SetImageTag(imageName, tag string, force bool) error {
+	opts := TagImageOptions{
+		Repo:  tag,
+		Force: force,
+	}
+	path := "/images/" + imageName + "/tag?" + queryString(&opts)
+	return c.stream("POST", path, nil, nil)
 }
