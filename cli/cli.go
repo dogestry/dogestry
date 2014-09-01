@@ -36,7 +36,7 @@ type DogestryCli struct {
 func NewDogestryCli(config config.Config) (*DogestryCli, error) {
 	dockerConnection := config.Docker.Connection
 	if dockerConnection == "" {
-		dockerConnection = "unix:///var/run/docker.sock"
+		dockerConnection = "tcp://localhost:2375"
 	}
 
 	newClient, err := docker.NewClient(dockerConnection)
@@ -164,7 +164,9 @@ func (cli *DogestryCli) TempDir() string {
 
 // Creates and returns a workdir under TempDir
 func (cli *DogestryCli) WorkDir(suffix string) (string, error) {
-	path := filepath.Join(cli.TempDir(), suffix)
+	path := filepath.Join(cli.TempDir(), strings.Replace(suffix, ":", "_", -1))
+
+	logger.Info("WorkDir: %s", path)
 
 	if err := os.MkdirAll(path, os.ModeDir|0700); err != nil {
 		return "", err

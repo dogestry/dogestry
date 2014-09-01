@@ -5,16 +5,17 @@ import (
 	"github.com/ingenieux/dogestry/remote"
 	"github.com/ingenieux/dogestry/utils"
 
-	client "github.com/fsouza/go-dockerclient"
-
 	"archive/tar"
 	"fmt"
+	"github.com/op/go-logging"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+var logger = logging.MustGetLogger("cli")
 
 func (cli *DogestryCli) CmdPush(args ...string) error {
 	cmd := cli.Subcmd("push", "REMOTE IMAGE[:TAG]", "push IMAGE to the REMOTE. TAG defaults to 'latest'")
@@ -39,9 +40,8 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 		return err
 	}
 
-	fmt.Println("remote", remote.Desc())
+	logger.Debug("Remote: %s", remote.Desc())
 
-	fmt.Println("preparing image")
 	if err := cli.prepareImage(image, imageRoot); err != nil {
 		return err
 	}
@@ -57,6 +57,8 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 // Stream the tarball from docker and translate it into the portable repo format
 // Note that its easier to handle as a stream on the way out.
 func (cli *DogestryCli) prepareImage(image, root string) error {
+	logger.Info("Preparing image (image: %s; root: %s)")
+
 	reader, writer := io.Pipe()
 	defer writer.Close()
 	defer reader.Close()
@@ -93,7 +95,7 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
 		errch <- nil
 	}()
 
-	if err := cli.client.ExportContainer(client.ExportContainerOptions{image, writer}); err != nil {
+	if err := cli.client.ExportImage(image, writer); err != nil {
 		// this should stop the tar reader
 		writer.Close()
 		<-errch
