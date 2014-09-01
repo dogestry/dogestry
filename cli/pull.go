@@ -170,13 +170,7 @@ func (cli *DogestryCli) sendTar(id, tag, imageRoot string) error {
 
 	fmt.Println("kicking off post")
 
-	repositoryId := id
-
-	if "" != tag {
-		repositoryId := id + ":" + tag
-	}
-
-	return cli.client.LoadImage(repositoryId, stdout)
+	return cli.client.LoadImage(stdout)
 }
 
 func dirNotExistOrEmpty(path string) (bool, error) {
