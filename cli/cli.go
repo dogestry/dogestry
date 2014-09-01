@@ -35,12 +35,11 @@ type DogestryCli struct {
 
 func NewDogestryCli(config config.Config) (*DogestryCli, error) {
 	dockerConnection := config.Docker.Connection
-	if dockerConnection == "" {
-		if "" != os.Getenv("DOCKER_HOST") {
-			dockerConnection = os.Getenv("DOCKET_HOST")
-		} else {
-			dockerConnection = "tcp://localhost:2375"
-		}
+
+	if "" != os.Getenv("DOCKER_HOST") {
+		dockerConnection = os.Getenv("DOCKET_HOST")
+	} else if dockerConnection == "" {
+		dockerConnection = "tcp://localhost:2375"
 	}
 
 	fmt.Println("Using docker endpoint:", dockerConnection)
