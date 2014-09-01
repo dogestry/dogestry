@@ -1,19 +1,7 @@
-FROM ubuntu:13.10
-MAINTAINER Lachie Cox <lachiec@gmail.com>
+FROM aldrinleal/godeb-base:latest
 
-RUN apt-get update && \
-      apt-get -y install \
-      curl \
-      git \
-      ca-certificates \
-      --no-install-recommends
+MAINTAINER Aldrin Leal <aldrin@leal.eng.br>
 
-RUN curl -s https://go.googlecode.com/files/go1.2.linux-amd64.tar.gz | tar -v -C /usr/local -xz
-ENV	PATH	/usr/local/go/bin:$PATH
-ENV	GOPATH	/go:/go/src/github.com/ingenieux/dogestry/vendor/go
-ADD . /go/src/github.com/ingenieux/dogestry
+RUN go get github.com/ingenieux/dogestry/dogestry
 
-RUN cd /go/src/github.com/ingenieux/dogestry && \
-    go get && \
-    go build && \
-    cp dogestry /dogestry
+CMD /home/ubuntu/go/dogestry
