@@ -10,10 +10,10 @@ RUN apt-get update && \
 
 RUN curl -s https://go.googlecode.com/files/go1.2.linux-amd64.tar.gz | tar -v -C /usr/local -xz
 ENV	PATH	/usr/local/go/bin:$PATH
-ENV	GOPATH	/go:/go/src/github.com/blake-education/dogestry/vendor/go
-ADD . /go/src/github.com/blake-education/dogestry
+ENV	GOPATH	/go:/go/src/github.com/ingenieux/dogestry/vendor/go
+ADD . /go/src/github.com/ingenieux/dogestry
 
-RUN cd /go/src/github.com/blake-education/dogestry && \
+RUN cd /go/src/github.com/ingenieux/dogestry && \
     go get && \
     go build && \
     cp dogestry /dogestry

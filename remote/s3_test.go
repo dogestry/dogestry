@@ -9,16 +9,16 @@ import (
 	"testing"
 	"time"
 
-  "os"
-  "io/ioutil"
-  "path/filepath"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 
 	"github.com/lachie/goamz/aws"
 	"github.com/lachie/goamz/s3"
 	"github.com/lachie/goamz/testutil"
 	. "launchpad.net/gocheck"
 
-  "github.com/blake-education/dogestry/config"
+	"github.com/ingenieux/dogestry/config"
 )
 
 func Test(t *testing.T) {
@@ -26,8 +26,8 @@ func Test(t *testing.T) {
 }
 
 type S struct {
-	remote *S3Remote
-  tempDir string
+	remote  *S3Remote
+	tempDir string
 }
 
 var _ = Suite(&S{})
@@ -35,125 +35,118 @@ var _ = Suite(&S{})
 var testServer = testutil.NewHTTPServer()
 
 var baseConfig = RemoteConfig{
-  Config: config.Config{
-    S3: config.S3Config{
-      Access_Key_Id: "abc",
-      Secret_Key: "123",
-    },
-  },
+	Config: config.Config{
+		S3: config.S3Config{
+			Access_Key_Id: "abc",
+			Secret_Key:    "123",
+		},
+	},
 }
 
 func (s *S) SetUpSuite(c *C) {
 	testServer.Start()
 
-  auth := aws.Auth{"abc", "123", ""}
-  client := s3.New(auth, aws.Region{Name: "faux-region-1", S3Endpoint: testServer.URL})
+	auth := aws.Auth{"abc", "123", ""}
+	client := s3.New(auth, aws.Region{Name: "faux-region-1", S3Endpoint: testServer.URL})
 
+	tempDir, err := ioutil.TempDir("", "dogestry-test")
+	if err != nil {
+		c.Fatalf("couldn't get tempdir: %s", err)
+	}
 
-  tempDir, err := ioutil.TempDir("", "dogestry-test")
-  if err != nil {
-    c.Fatalf("couldn't get tempdir: %s", err)
-  }
+	s.tempDir = tempDir
 
-  s.tempDir = tempDir
-
-  s.remote = &S3Remote{
-    config: baseConfig,
-    BucketName: "bucket",
-    KeyPrefix:  "prefix",
-    client:     client,
-  }
+	s.remote = &S3Remote{
+		config:     baseConfig,
+		BucketName: "bucket",
+		KeyPrefix:  "prefix",
+		client:     client,
+	}
 }
 
 func (s *S) TearDownSuite(c *C) {
-  s3.SetAttemptStrategy(nil)
+	s3.SetAttemptStrategy(nil)
 
-  defer os.RemoveAll(s.tempDir)
+	defer os.RemoveAll(s.tempDir)
 }
 
 func (s *S) SetUpTest(c *C) {
-  attempts := aws.AttemptStrategy{
-    Total: 300 * time.Millisecond,
-    Delay: 100 * time.Millisecond,
-  }
-  s3.SetAttemptStrategy(&attempts)
+	attempts := aws.AttemptStrategy{
+		Total: 300 * time.Millisecond,
+		Delay: 100 * time.Millisecond,
+	}
+	s3.SetAttemptStrategy(&attempts)
 }
 
-
 func (s *S) TestBucket(c *C) {
-  testServer.Response(200, nil, "content")
+	testServer.Response(200, nil, "content")
 
 	b := s.remote.getBucket()
-  c.Assert(b.Name, Equals, "bucket")
+	c.Assert(b.Name, Equals, "bucket")
 }
 
 func (s *S) TestRepoKeys(c *C) {
-  nelsonSha := "123"
+	nelsonSha := "123"
 
-  //testServer.Response(200, nil, "content")
-  testServer.Response(200, nil, GetListResultDump1)
-  testServer.Response(200, nil, nelsonSha)
+	//testServer.Response(200, nil, "content")
+	testServer.Response(200, nil, GetListResultDump1)
+	testServer.Response(200, nil, nelsonSha)
 
-	keys,err := s.remote.repoKeys("")
+	keys, err := s.remote.repoKeys("")
 	c.Assert(err, IsNil)
 
 	testServer.WaitRequests(2)
 
-  c.Log(keys["Nelson"])
+	c.Log(keys["Nelson"])
 
-  c.Assert(keys["Nelson"].key, Equals, "Nelson")
-  c.Assert(keys["Nelson"].Sum(), Equals, nelsonSha)
+	c.Assert(keys["Nelson"].key, Equals, "Nelson")
+	c.Assert(keys["Nelson"].Sum(), Equals, nelsonSha)
 
-  c.Assert(keys["Neo"].key, Equals, "Neo")
-  c.Assert(keys["Neo"].Sum(), Equals, "")
+	c.Assert(keys["Neo"].key, Equals, "Neo")
+	c.Assert(keys["Neo"].Sum(), Equals, "")
 }
-
 
 func (s *S) TestLocalKeys(c *C) {
-  dumpFile(s.tempDir, "file1", "hello world")
-  dumpFile(s.tempDir, "dir/file2", "hello mars")
+	dumpFile(s.tempDir, "file1", "hello world")
+	dumpFile(s.tempDir, "dir/file2", "hello mars")
 
-  keys,err := s.remote.localKeys(s.tempDir)
+	keys, err := s.remote.localKeys(s.tempDir)
 	c.Assert(err, IsNil)
 
-  c.Assert(keys["file1"].key, Equals, "file1")
-  c.Assert(keys["file1"].fullPath, Equals, filepath.Join(s.tempDir,"file1"))
-  c.Assert(keys["file1"].sum, Equals, "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed")
+	c.Assert(keys["file1"].key, Equals, "file1")
+	c.Assert(keys["file1"].fullPath, Equals, filepath.Join(s.tempDir, "file1"))
+	c.Assert(keys["file1"].sum, Equals, "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed")
 
-  c.Assert(keys["dir/file2"].key, Equals, "dir/file2")
-  c.Assert(keys["dir/file2"].fullPath, Equals, filepath.Join(s.tempDir,"dir/file2"))
-  c.Assert(keys["dir/file2"].sum, Equals, "dd6944c43fabd03cf643fe0daf625759dbdea808")
+	c.Assert(keys["dir/file2"].key, Equals, "dir/file2")
+	c.Assert(keys["dir/file2"].fullPath, Equals, filepath.Join(s.tempDir, "dir/file2"))
+	c.Assert(keys["dir/file2"].sum, Equals, "dd6944c43fabd03cf643fe0daf625759dbdea808")
 }
-
 
 func (s *S) TestResolveImageNameToId(c *C) {
-  rubyId := "123"
+	rubyId := "123"
 
-  testServer.Response(200, nil, "123")
+	testServer.Response(200, nil, "123")
 
-  id,err := s.remote.ResolveImageNameToId("ruby")
-  c.Assert(err, IsNil)
+	id, err := s.remote.ResolveImageNameToId("ruby")
+	c.Assert(err, IsNil)
 
-  c.Assert(string(id), Equals, rubyId)
+	c.Assert(string(id), Equals, rubyId)
 
+	testServer.Flush()
+	testServer.Response(404, nil, "")
 
-  testServer.Flush()
-  testServer.Response(404, nil, "")
-
-  id,err = s.remote.ResolveImageNameToId("rubyx")
-  c.Assert(err, Not(IsNil))
+	id, err = s.remote.ResolveImageNameToId("rubyx")
+	c.Assert(err, Not(IsNil))
 }
 
-
 //func (s *S) TestGetFiles(c *C) {
-  //s.remote.getFiles(s.tempDir, )
+//s.remote.getFiles(s.tempDir, )
 //}
 
-
 func dumpFile(temp, filename, content string) error {
-  out := filepath.Join(temp, filename)
-  if err := os.MkdirAll(filepath.Dir(out), 0700); err != nil {
-    return err
-  }
-  return ioutil.WriteFile(out, []byte(content), 0600)
+	out := filepath.Join(temp, filename)
+	if err := os.MkdirAll(filepath.Dir(out), 0700); err != nil {
+		return err
+	}
+	return ioutil.WriteFile(out, []byte(content), 0600)
 }

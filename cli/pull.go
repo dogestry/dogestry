@@ -8,8 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/blake-education/dogestry/remote"
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/ingenieux/dogestry/remote"
 )
 
 func (cli *DogestryCli) CmdPull(args ...string) error {
@@ -55,13 +55,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 	}
 
 	fmt.Println("sending tar to docker")
-	if err := cli.sendTar(imageRoot); err != nil {
-		return err
-	}
-
-	// in the case where we already have the image, but its not tagged:
-	fmt.Println("ensuring tag")
-	if err := cli.retag(image, id); err != nil {
+	if err := cli.sendTar(image, id.String(), imageRoot); err != nil {
 		return err
 	}
 
@@ -147,7 +141,7 @@ func prepareRepositories(image, imageRoot string, r remote.Remote) error {
 
 // stream the tarball into docker
 // its easier here to use tar command, but it'd be neater to mirror Push's approach
-func (cli *DogestryCli) sendTar(imageRoot string) error {
+func (cli *DogestryCli) sendTar(id, tag, imageRoot string) error {
 	notExist, err := dirNotExistOrEmpty(imageRoot)
 
 	if err != nil {
@@ -175,11 +169,8 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 	}
 
 	fmt.Println("kicking off post")
-	return cli.client.PostImageTarball(stdout)
-}
 
-func (cli *DogestryCli) retag(tag string, id remote.ID) error {
-	return cli.client.SetImageTag(id.String(), tag, false)
+	return cli.client.ImportImage(docker.ImportImageOptions{Repository: id, Tag: tag, Source: "-", InputStream: stdout})
 }
 
 func dirNotExistOrEmpty(path string) (bool, error) {

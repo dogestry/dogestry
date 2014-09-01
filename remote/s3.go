@@ -1,20 +1,21 @@
 package remote
 
 import (
-	"github.com/blake-education/dogestry/utils"
-	"github.com/mitchellh/goamz/aws"
-	"github.com/mitchellh/goamz/s3"
+	"github.com/crowdmob/goamz/aws"
+	"github.com/crowdmob/goamz/s3"
+	"github.com/ingenieux/dogestry/utils"
 
 	"bufio"
 	"encoding/json"
 
-	"github.com/blake-education/dogestry/compressor"
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/ingenieux/dogestry/compressor"
 
 	"fmt"
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"io"
 	"os"
@@ -30,7 +31,7 @@ type S3Remote struct {
 }
 
 var (
-	S3DefaultRegion = "us-west-2"
+	S3DefaultRegion = "us-east-1"
 )
 
 func NewS3Remote(config RemoteConfig) (*S3Remote, error) {
@@ -80,7 +81,7 @@ func newS3Client(config RemoteConfig) (*s3.S3, error) {
 // determine the s3 auth from various sources
 func getS3Auth(config RemoteConfig) (aws.Auth, error) {
 	s3config := config.Config.S3
-	return aws.GetAuth(s3config.Access_Key_Id, s3config.Secret_Key)
+	return aws.GetAuth(s3config.Access_Key_Id, s3config.Secret_Key, "", time.Now())
 }
 
 func (remote *S3Remote) Validate() error {
@@ -283,12 +284,12 @@ func (remote *S3Remote) repoKeys(prefix string) (keys, error) {
 
 	bucket := remote.getBucket()
 
-	cnt, err := bucket.GetBucketContentsFiltered(bucketPrefix, "", "")
+	cnt, err := bucket.List(bucketPrefix, "", "", 1000)
 	if err != nil {
 		return repoKeys, fmt.Errorf("getting bucket contents at prefix '%s': %s", prefix, err)
 	}
 
-	for _, key := range *cnt {
+	for _, key := range cnt.Contents {
 		if key.Key == "" {
 			continue
 		}
@@ -377,12 +378,12 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 	//return err
 	//}
 
-	err = remote.getBucket().PutReader(dstKey, progressReader, finfo.Size(), "application/octet-stream", s3.Private)
+	err = remote.getBucket().PutReader(dstKey, progressReader, finfo.Size(), "application/octet-stream", s3.Private, s3.Options{})
 	if err != nil {
 		return err
 	}
 
-	return remote.getBucket().Put(dstKey+".sum", []byte(key.Sum()), "text/plain", s3.Private)
+	return remote.getBucket().Put(dstKey+".sum", []byte(key.Sum()), "text/plain", s3.Private, s3.Options{})
 }
 
 // get files from the s3 bucket to a local path, relative to rootKey

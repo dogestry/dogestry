@@ -5,7 +5,7 @@ import (
 	//"os"
 	"log"
 
-	"github.com/blake-education/dogestry/cli"
+	"github.com/ingenieux/dogestry/cli"
 )
 
 func main() {

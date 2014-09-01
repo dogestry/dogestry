@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/blake-education/dogestry/config"
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/ingenieux/dogestry/config"
 )
 
 var (
