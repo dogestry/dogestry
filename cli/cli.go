@@ -43,6 +43,8 @@ func NewDogestryCli(config config.Config) (*DogestryCli, error) {
 		}
 	}
 
+	fmt.Println("Using docker endpoint:", dockerConnection)
+
 	newClient, err := docker.NewClient(dockerConnection)
 	if err != nil {
 		log.Fatal(err)
