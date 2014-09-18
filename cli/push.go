@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/ingenieux/dogestry/remote"
 	"github.com/ingenieux/dogestry/utils"
 
@@ -95,7 +96,7 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
 		errch <- nil
 	}()
 
-	if err := cli.client.ExportImage(image, writer); err != nil {
+	if err := cli.client.ExportImage(docker.ExportImageOptions{image, writer}); err != nil {
 		// this should stop the tar reader
 		writer.Close()
 		<-errch
