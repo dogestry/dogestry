@@ -3,8 +3,8 @@ package cli
 import (
 	"encoding/json"
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/ingenieux/dogestry/remote"
-	"github.com/ingenieux/dogestry/utils"
+	"github.com/didip/dogestry/remote"
+	"github.com/didip/dogestry/utils"
 
 	"archive/tar"
 	"fmt"
@@ -58,7 +58,7 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 // Stream the tarball from docker and translate it into the portable repo format
 // Note that its easier to handle as a stream on the way out.
 func (cli *DogestryCli) prepareImage(image, root string) error {
-	logger.Info("Preparing image (image: %s; root: %s)")
+	logger.Info("Preparing image (image: %s; root: %s)", image, root)
 
 	reader, writer := io.Pipe()
 	defer writer.Close()
