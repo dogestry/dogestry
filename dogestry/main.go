@@ -4,11 +4,13 @@ import (
 	"flag"
 	//"os"
 	"log"
-
-	"github.com/ingenieux/dogestry/cli"
+	"runtime"
+	"github.com/didip/dogestry/cli"
 )
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	flConfigFile := flag.String("config", "", "the dogestry config file (defaults to 'dogestry.cfg' in the current directory). Config is optional - if using s3 you can use env vars or signed URLs.")
 	flTempDir := flag.String("tempdir", "", "an alternate tempdir to use")
 	flag.Parse()
