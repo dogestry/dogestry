@@ -1,7 +1,7 @@
 package compressor
 
 import (
-	"github.com/ingenieux/dogestry/config"
+	"github.com/didip/dogestry/config"
 
 	"fmt"
 	"os"

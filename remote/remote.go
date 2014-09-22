@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/ingenieux/dogestry/config"
+	"github.com/didip/dogestry/config"
 )
 
 var (

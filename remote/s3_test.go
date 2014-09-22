@@ -18,7 +18,7 @@ import (
 	"github.com/lachie/goamz/testutil"
 	. "launchpad.net/gocheck"
 
-	"github.com/ingenieux/dogestry/config"
+	"github.com/didip/dogestry/config"
 )
 
 func Test(t *testing.T) {
