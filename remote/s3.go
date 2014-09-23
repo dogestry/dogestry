@@ -3,14 +3,15 @@ package remote
 import (
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
-	"github.com/ingenieux/dogestry/utils"
+	"github.com/didip/dogestry/utils"
 
 	"bufio"
 	"encoding/json"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/ingenieux/dogestry/compressor"
+	"github.com/didip/dogestry/compressor"
 
+	"sync"
 	"fmt"
 	"path"
 	"path/filepath"
@@ -100,6 +101,8 @@ func (remote *S3Remote) Desc() string {
 }
 
 func (remote *S3Remote) Push(image, imageRoot string) error {
+	var err error
+
 	fmt.Println("fetching repo keys")
 	remoteKeys, err := remote.repoKeys("")
 	if err != nil {
@@ -123,16 +126,35 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 		return nil
 	}
 
-	// TODO parallelise this
+	var wg sync.WaitGroup
+
+	putFileErrMap := make(map[string]error)
+
 	for key, localKey := range keysToPush {
 		fmt.Printf("pushing key %s (%s)\n", key, utils.FileHumanSize(localKey.fullPath))
 
-		if err := remote.putFile(localKey.fullPath, localKey); err != nil {
-			return err
-		}
+		wg.Add(1)
+
+		keyDefClone := *localKey
+
+		go func(key string, localKey keyDef) {
+			putFileErr := remote.putFile(localKey.fullPath, &localKey)
+			if putFileErr != nil {
+				putFileErrMap[key] = putFileErr
+			}
+
+			wg.Done()
+		}(key, keyDefClone)
+	}
+	wg.Wait()
+
+	fmt.Printf("Errors during Push: %v\n\n", putFileErrMap)
+
+	if len(putFileErrMap) > 0 {
+		err = fmt.Errorf("error uploading to S3")
 	}
 
-	return nil
+	return err
 }
 
 func (remote *S3Remote) PullImageId(id ID, dst string) error {
