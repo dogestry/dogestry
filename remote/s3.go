@@ -26,7 +26,6 @@ type S3Remote struct {
 	config     RemoteConfig
 	BucketName string
 	Bucket     *s3.Bucket
-	KeyPrefix  string
 	client     *s3.S3
 	compressor compressor.Compressor
 }
@@ -42,7 +41,6 @@ func NewS3Remote(config RemoteConfig) (*S3Remote, error) {
 	}
 
 	url := config.Url
-	prefix := strings.TrimPrefix(url.Path, "/")
 
 	//compressor,err := compressor.NewCompressor(config.Config)
 	//if err != nil {
@@ -52,7 +50,6 @@ func NewS3Remote(config RemoteConfig) (*S3Remote, error) {
 	return &S3Remote{
 		config:     config,
 		BucketName: url.Host,
-		KeyPrefix:  prefix,
 		client:     s3,
 		//compressor: compressor,
 	}, nil
@@ -87,7 +84,7 @@ func getS3Auth(config RemoteConfig) (aws.Auth, error) {
 
 func (remote *S3Remote) Validate() error {
 	bucket := remote.getBucket()
-	_, err := bucket.List(remote.KeyPrefix, "", "", 1)
+	_, err := bucket.List("", "", "", 1)
 	if err != nil {
 		return fmt.Errorf("%s unable to ping s3 bucket: %s", remote.Desc(), err)
 	}
@@ -97,7 +94,7 @@ func (remote *S3Remote) Validate() error {
 
 // Remote: describe the remote
 func (remote *S3Remote) Desc() string {
-	return fmt.Sprintf("s3(bucket=%s, prefix=%s, region=%s, accessKey=%s)", remote.BucketName, remote.KeyPrefix, remote.client.Region.Name, remote.client.Auth.AccessKey)
+	return fmt.Sprintf("s3(bucket=%s, region=%s, accessKey=%s)", remote.BucketName, remote.client.Region.Name, remote.client.Auth.AccessKey)
 }
 
 func (remote *S3Remote) Push(image, imageRoot string) error {
@@ -148,9 +145,8 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 	}
 	wg.Wait()
 
-	fmt.Printf("Errors during Push: %v\n\n", putFileErrMap)
-
 	if len(putFileErrMap) > 0 {
+		fmt.Printf("Errors during Push: %v\n", putFileErrMap)
 		err = fmt.Errorf("error uploading to S3")
 	}
 
@@ -298,15 +294,12 @@ func (kd *keyDef) Sum() (sum string) {
 func (remote *S3Remote) repoKeys(prefix string) (keys, error) {
 	repoKeys := make(keys)
 
-	prefix = strings.TrimLeft(strings.TrimRight(prefix, "/"), "/")
-	keyPrefix := strings.TrimRight(remote.KeyPrefix, "/")
-
-	bucketPrefix := keyPrefix + "/" + prefix
-	remotePrefix := keyPrefix + "/"
+	prefix = strings.Trim(prefix, "/")
 
 	bucket := remote.getBucket()
 
-	cnt, err := bucket.List(bucketPrefix, "", "", 1000)
+	cnt, err := bucket.List(prefix, "", "", 1000)
+
 	if err != nil {
 		return repoKeys, fmt.Errorf("getting bucket contents at prefix '%s': %s", prefix, err)
 	}
@@ -316,7 +309,7 @@ func (remote *S3Remote) repoKeys(prefix string) (keys, error) {
 			continue
 		}
 
-		plainKey := strings.TrimPrefix(key.Key, remotePrefix)
+		plainKey := strings.TrimPrefix(key.Key, "/")
 
 		if strings.HasSuffix(plainKey, ".sum") {
 			plainKey = strings.TrimSuffix(plainKey, ".sum")
@@ -466,17 +459,16 @@ func (remote *S3Remote) getFile(dst string, key *keyDef) error {
 
 // path to a tagfile
 func (remote *S3Remote) tagFilePath(repo, tag string) string {
-	return filepath.Join(remote.KeyPrefix, "repositories", repo, tag)
+	return filepath.Join("repositories", repo, tag)
 }
 
 // path to an image dir
 func (remote *S3Remote) imagePath(id ID) string {
-	return filepath.Join(remote.KeyPrefix, "images", string(id))
+	return filepath.Join("images", string(id))
 }
 
-// the full remote key (adds KeyPrefix)
 func (remote *S3Remote) remoteKey(key string) string {
-	return path.Join(remote.KeyPrefix, key)
+	return key
 }
 
 // TODO readd

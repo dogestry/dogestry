@@ -3,7 +3,7 @@
 # dogestry
 
 Proof of concept for simple image storage for docker.
-This is a simple client you can run where you run docker - and you don't need a registry - it talks directly to s3 (for example). docker save/load is the mechanism used. 
+This is a simple client you can run where you run docker - and you don't need a registry - it talks directly to s3 (for example). docker save/load is the mechanism used.
 
 ## prerequisites
 
@@ -24,9 +24,9 @@ Push the `redis` image and its current tag to the `central` remote. The `central
 dogestry push central redis
 ```
 
-Push the `hipache` image to the s3 bucket `ops-goodies` with the key prefix `docker-repo` located in `us-west-2`:
+Push the `hipache` image to the s3 bucket `ops-goodies` located in `us-west-2`:
 ```
-dogestry push s3://ops-goodies/docker-repo/?region=us-west-2 hipache
+dogestry push s3://ops-goodies/?region=us-west-2 hipache
 ```
 
 ### pull
@@ -36,7 +36,7 @@ Pull the `hipache` image and tag from the `central`.
 dogestry pull central hipache
 ```
 
-And the s3 version: 
+And the s3 version:
 
 ```
 dogestry pull s3://ops-goodies/docker-repo/?region=us-west-2 hipache
@@ -51,13 +51,13 @@ Dogestry can often run without a configuration file, but it's there if you need 
 For example, using the config file, you can set up remote aliases for convenience or specifiy s3 credentials.
 
 However, if you're bootstrapping a system, you might rely on IAM instance profiles for credentials and specify the
-remote using its full url. 
+remote using its full url.
 
 ### S3
 
-When working with s3, you can use environment variables for credentials, or use signed URLs. The advantage of signed URLs is that you can tightly control the resouce access. 
+When working with s3, you can use environment variables for credentials, or use signed URLs. The advantage of signed URLs is that you can tightly control the resouce access.
 
-A common use case if you have a build server building and publishing images via dogestry (needs read write) - but when you deploy - dogestry only needs read access to s3, and can use signed urls (so you don't need any configuration - the URL contains all that is needed to pull the repository): 
+A common use case if you have a build server building and publishing images via dogestry (needs read write) - but when you deploy - dogestry only needs read access to s3, and can use signed urls (so you don't need any configuration - the URL contains all that is needed to pull the repository):
 
 ```
   Typical S3 Usage:
@@ -97,7 +97,7 @@ time and energy worthwhile in moving away, docker must solve all of the problems
 It currently does not do this. Luckily most of these blockers are concentrated in the registry approach.
 
 In capistrano (as we use it):
-* dependencies are not resolved until during deployment. 
+* dependencies are not resolved until during deployment.
   * If the services hosting these dependencies are down, we're unable to deploy.
   * If these services go down half way through a deploy onto multiple boxes: chaos.
   * This is particularly the case on fresh boxes, `bundle install` is a very expensive and coupled to external service uptime.
@@ -130,7 +130,7 @@ It centres around a common portable repository format.
 
 ### synchronisation
 
-Using the new feature for de/serialising self-consistent image histories (`GET /images/<name>/get` and `POST /images/load`) 
+Using the new feature for de/serialising self-consistent image histories (`GET /images/<name>/get` and `POST /images/load`)
 
 * dogestry push - push images from local docker instance to the remote in the portable repo format
 * dogestry pull - pull images from the remote into the local docker instance
@@ -140,7 +140,7 @@ Using the new feature for de/serialising self-consistent image histories (`GET /
 "Remotes" are the external storage locations for the docker images. Dogestry implements transports for each kind of remote, much
 like git.
 
-Authentication/authorisation is orthogonal to the concerns of dogestry. It relies on each transport's natural authorisation, such as s3's AWS credentials, or 
+Authentication/authorisation is orthogonal to the concerns of dogestry. It relies on each transport's natural authorisation, such as s3's AWS credentials, or
 unix filesystem permissions. Future transports could use ssh, sftp or the docker registry API.
 
 #### local remote
@@ -169,7 +169,7 @@ images:
 ```
 images/5d4e24b3d968cc6413a81f6f49566a0db80be401d647ade6d977a9dd9864569f/layer.tar
 images/5d4e24b3d968cc6413a81f6f49566a0db80be401d647ade6d977a9dd9864569f/VERSION
-images/5d4e24b3d968cc6413a81f6f49566a0db80be401d647ade6d977a9dd9864569f/json 
+images/5d4e24b3d968cc6413a81f6f49566a0db80be401d647ade6d977a9dd9864569f/json
 ```
 
 To better support eventually-consistent remotes using dumb transports (i.e. s3) The repositories json is unrolled into files (like `.git/refs`)
@@ -182,7 +182,7 @@ repositories/myapp/latest       (content: 5d4e24b3d968cc6413a81f6f49566a0db80be4
 
 (**This is switched off for the moment.**)
 
-I've chosen to use lz4 as the compression format as it's very fast and for `layer.tar` still seems to provide reasonable compression ratios. 
+I've chosen to use lz4 as the compression format as it's very fast and for `layer.tar` still seems to provide reasonable compression ratios.
 There's a [go implementation][golz4] but there's no streaming (i.e. `io.Reader`/`io.Writer`) version and I wouldn't know where to start in converting it.
 
 Given that remotes are generally, well, remote, I don't think it's a stretch to include compression for the portable repository format.
@@ -196,7 +196,7 @@ Lz4 was really impressive compressing layer.tar. Here are some rough numbers per
 
 method       | size | compress                                   | decompress
 ---          | ---  | ---                                        | ---
-uncompressed | 848M |                                            | 
+uncompressed | 848M |                                            |
 gzip         | 288M | 28.2s (real 0m28.279s user 0m27.440s sys 0m0.640s) | 5.9s (real 0m5.862s user 0m4.584s sys 0m1.044s)
 lz4          | 397M | 2.7s (real 0m2.697s user 0m0.000s sys 0m0.000s   | 1.4s (real 0m1.473s user 0m0.548s sys 0m0.668s)
 

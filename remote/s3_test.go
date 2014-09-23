@@ -59,7 +59,6 @@ func (s *S) SetUpSuite(c *C) {
 	s.remote = &S3Remote{
 		config:     baseConfig,
 		BucketName: "bucket",
-		KeyPrefix:  "prefix",
 		client:     client,
 	}
 }

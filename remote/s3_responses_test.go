@@ -7,7 +7,7 @@ var GetListResultDump1 = `
   <Prefix>N</Prefix>
   <IsTruncated>false</IsTruncated>
   <Contents>
-    <Key>prefix/Nelson</Key>
+    <Key>Nelson</Key>
     <LastModified>2006-01-01T12:00:00.000Z</LastModified>
     <ETag>&quot;828ef3fdfa96f00ad9f27c383fc9ac7f&quot;</ETag>
     <Size>5</Size>
@@ -18,7 +18,7 @@ var GetListResultDump1 = `
      </Owner>
   </Contents>
   <Contents>
-    <Key>prefix/Nelson.sum</Key>
+    <Key>Nelson.sum</Key>
     <LastModified>2006-01-01T12:00:00.000Z</LastModified>
     <ETag>&quot;828ef3fdfa96f00ad9f27c383fc9ac7f&quot;</ETag>
     <Size>5</Size>
@@ -29,7 +29,7 @@ var GetListResultDump1 = `
      </Owner>
   </Contents>
   <Contents>
-    <Key>prefix/Neo</Key>
+    <Key>Neo</Key>
     <LastModified>2006-01-01T12:00:00.000Z</LastModified>
     <ETag>&quot;828ef3fdfa96f00ad9f27c383fc9ac7f&quot;</ETag>
     <Size>4</Size>
