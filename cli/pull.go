@@ -102,17 +102,7 @@ func (cli *DogestryCli) preparePullImage(fromId remote.ID, imageRoot string, r r
 func (cli *DogestryCli) pullImage(id remote.ID, dst string, r remote.Remote) error {
 	fmt.Printf("Pulling image id '%s' to dst: %v\n", id.Short(), dst)
 
-	// XXX fix image name rewrite
-	err := r.PullImageId(id, dst)
-	if err != nil {
-		return err
-	}
-	return cli.processPulled(id, dst)
-}
-
-// no-op for now
-func (cli *DogestryCli) processPulled(id remote.ID, dst string) error {
-	return nil
+	return r.PullImageId(id, dst)
 }
 
 func prepareRepositories(image, imageRoot string, r remote.Remote) error {
