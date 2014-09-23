@@ -13,10 +13,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/lachie/goamz/aws"
-	"github.com/lachie/goamz/s3"
-	"github.com/lachie/goamz/testutil"
-	. "launchpad.net/gocheck"
+	"github.com/crowdmob/goamz/aws"
+	"github.com/crowdmob/goamz/s3"
+	"github.com/crowdmob/goamz/testutil"
+	. "gopkg.in/check.v1"
 
 	"github.com/didip/dogestry/config"
 )
@@ -46,7 +46,7 @@ var baseConfig = RemoteConfig{
 func (s *S) SetUpSuite(c *C) {
 	testServer.Start()
 
-	auth := aws.Auth{"abc", "123", ""}
+	auth, _ := aws.GetAuth("abc", "123", "", time.Time{})
 	client := s3.New(auth, aws.Region{Name: "faux-region-1", S3Endpoint: testServer.URL})
 
 	tempDir, err := ioutil.TempDir("", "dogestry-test")
@@ -65,17 +65,7 @@ func (s *S) SetUpSuite(c *C) {
 }
 
 func (s *S) TearDownSuite(c *C) {
-	s3.SetAttemptStrategy(nil)
-
 	defer os.RemoveAll(s.tempDir)
-}
-
-func (s *S) SetUpTest(c *C) {
-	attempts := aws.AttemptStrategy{
-		Total: 300 * time.Millisecond,
-		Delay: 100 * time.Millisecond,
-	}
-	s3.SetAttemptStrategy(&attempts)
 }
 
 func (s *S) TestBucket(c *C) {
@@ -138,10 +128,6 @@ func (s *S) TestResolveImageNameToId(c *C) {
 	id, err = s.remote.ResolveImageNameToId("rubyx")
 	c.Assert(err, Not(IsNil))
 }
-
-//func (s *S) TestGetFiles(c *C) {
-//s.remote.getFiles(s.tempDir, )
-//}
 
 func dumpFile(temp, filename, content string) error {
 	out := filepath.Join(temp, filename)
