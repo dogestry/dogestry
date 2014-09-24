@@ -409,14 +409,33 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 // key: "images/456/json"
 // downloads to: "/tmp/rego/123/456/json"
 func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
-	for _, keyDef := range imageKeys {
-		relKey := strings.TrimPrefix(keyDef.key, rootKey)
-		relKey = strings.TrimPrefix(relKey, "/")
+	var wg sync.WaitGroup
 
-		err := remote.getFile(filepath.Join(dst, relKey), keyDef)
-		if err != nil {
-			return err
-		}
+	getFilesErrMap := make(map[string]error)
+
+	for _, key := range imageKeys {
+		wg.Add(1)
+
+		keyDefClone := *key
+
+		go func(dst, rootKey string, key keyDef) {
+			relKey := strings.TrimPrefix(key.key, rootKey)
+			relKey = strings.TrimPrefix(relKey, "/")
+
+			err := remote.getFile(filepath.Join(dst, relKey), &key)
+			if err != nil {
+				getFilesErrMap[key.key] = err
+			}
+
+			wg.Done()
+
+		}(dst, rootKey, keyDefClone)
+	}
+	wg.Wait()
+
+	if len(getFilesErrMap) > 0 {
+		fmt.Printf("Errors during getFiles: %v\n", getFilesErrMap)
+		return fmt.Errorf("error downloading files from S3")
 	}
 
 	return nil
