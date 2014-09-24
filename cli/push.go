@@ -84,12 +84,6 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
 			}
 		}
 
-		// donno... read a bit more?
-		if _, err := ioutil.ReadAll(reader); err != nil {
-			errch <- err
-			return
-		}
-
 		errch <- nil
 	}()
 
