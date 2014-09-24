@@ -97,52 +97,55 @@ func (remote *S3Remote) Desc() string {
 	return fmt.Sprintf("s3(bucket=%s, region=%s, accessKey=%s)", remote.BucketName, remote.client.Region.Name, remote.client.Auth.AccessKey)
 }
 
+type putFileTuple struct {
+	Key string
+	KeyDef keyDef
+}
+
 func (remote *S3Remote) Push(image, imageRoot string) error {
 	var err error
 
-	fmt.Println("fetching repo keys")
-	remoteKeys, err := remote.repoKeys("")
+	keysToPush, err := remote.localKeysNotInRemote(imageRoot)
 	if err != nil {
-		return fmt.Errorf("error getting repoKeys: %s", err)
+		return fmt.Errorf("error calculating keys to push: %v", err)
 	}
-
-	fmt.Println("fetching local keys")
-	localKeys, err := remote.localKeys(imageRoot)
-	if err != nil {
-		return fmt.Errorf("error getting localKeys: %s", err)
-	}
-
-	// DEBUG
-	//delete(remoteKeys, "images/8dbd9e392a964056420e5d58ca5cc376ef18e2de93b5cc90e868a1bbc8318c1c/layer.tar.lz4")
-
-	fmt.Println("comparing keys")
-	keysToPush := localKeys.NotIn(remoteKeys)
 
 	if len(keysToPush) == 0 {
 		fmt.Println("nothing to push")
 		return nil
 	}
 
+	putFileErrMap := make(map[string]error)
+	putFilesChan := make(chan putFileTuple, len(keysToPush))
+
+	numGoroutines := 50
+
 	var wg sync.WaitGroup
 
-	putFileErrMap := make(map[string]error)
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+
+		go func() {
+			for putFileArguments := range putFilesChan {
+				putFileErr := remote.putFile(putFileArguments.KeyDef.fullPath, &putFileArguments.KeyDef)
+				if putFileErr != nil {
+					putFileErrMap[putFileArguments.Key] = putFileErr
+				}
+			}
+
+			wg.Done()
+		}()
+	}
 
 	for key, localKey := range keysToPush {
 		fmt.Printf("pushing key %s (%s)\n", key, utils.FileHumanSize(localKey.fullPath))
 
-		wg.Add(1)
-
 		keyDefClone := *localKey
 
-		go func(key string, localKey keyDef) {
-			putFileErr := remote.putFile(localKey.fullPath, &localKey)
-			if putFileErr != nil {
-				putFileErrMap[key] = putFileErr
-			}
-
-			wg.Done()
-		}(key, keyDefClone)
+		putFilesChan <- putFileTuple{key, keyDefClone}
 	}
+
+	close(putFilesChan)
 	wg.Wait()
 
 	if len(putFileErrMap) > 0 {
@@ -360,6 +363,25 @@ func (remote *S3Remote) localKeys(root string) (keys, error) {
 	}
 
 	return localKeys, nil
+}
+
+func (remote *S3Remote) localKeysNotInRemote(imageRoot string) (keys, error) {
+	var err error
+
+	remoteKeys, err := remote.repoKeys("")
+	if err != nil {
+		return nil, err
+	}
+
+	localKeys, err := remote.localKeys(imageRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("calculating local keys to push")
+	keysToPush := localKeys.NotIn(remoteKeys)
+
+	return keysToPush, err
 }
 
 type progress struct {
