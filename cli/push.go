@@ -69,16 +69,14 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
 		// consume the tar
 		for {
 			header, err := tarball.Next()
-			if err == io.EOF {
-				// end of tar archive
-				break
-			}
+			if err == io.EOF { break }   // end of tar file
+
 			if err != nil {
 				errch <- err
 				return
 			}
 
-			if err := cli.processTarEntry(root, header, tarball); err != nil {
+			if err := cli.createFileFromTar(root, header, tarball); err != nil {
 				errch <- err
 				return
 			}
@@ -104,7 +102,7 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
 	return nil
 }
 
-func (cli *DogestryCli) processTarEntry(root string, header *tar.Header, tarball io.Reader) error {
+func (cli *DogestryCli) createFileFromTar(root string, header *tar.Header, tarball io.Reader) error {
 	// only handle files (directories are implicit)
 	if header.Typeflag == tar.TypeReg {
 		fmt.Printf("  tar: processing %s\n", header.Name)
