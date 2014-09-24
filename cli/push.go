@@ -8,15 +8,12 @@ import (
 
 	"archive/tar"
 	"fmt"
-	"github.com/op/go-logging"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 )
-
-var logger = logging.MustGetLogger("cli")
 
 func (cli *DogestryCli) CmdPush(args ...string) error {
 	cmd := cli.Subcmd("push", "REMOTE IMAGE[:TAG]", "push IMAGE to the REMOTE. TAG defaults to 'latest'")
@@ -41,7 +38,7 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 		return err
 	}
 
-	logger.Debug("Remote: %s", remote.Desc())
+	fmt.Printf("Remote: %v\n", remote.Desc())
 
 	if err := cli.prepareImage(image, imageRoot); err != nil {
 		return err
@@ -58,7 +55,7 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 // Stream the tarball from docker and translate it into the portable repo format
 // Note that its easier to handle as a stream on the way out.
 func (cli *DogestryCli) prepareImage(image, root string) error {
-	logger.Info("Preparing image (image: %s; root: %s)", image, root)
+	fmt.Printf("Preparing image (image: %v; root: %v)\n", image, root)
 
 	reader, writer := io.Pipe()
 	defer writer.Close()
