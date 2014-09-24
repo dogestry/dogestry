@@ -5,7 +5,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/didip/dogestry/remote"
 	"github.com/didip/dogestry/utils"
-
+	"bytes"
 	"archive/tar"
 	"fmt"
 	"io"
@@ -101,8 +101,6 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
 func (cli *DogestryCli) createFileFromTar(root string, header *tar.Header, tarball io.Reader) error {
 	// only handle files (directories are implicit)
 	if header.Typeflag == tar.TypeReg {
-		fmt.Printf("  tar: processing %s\n", header.Name)
-
 		// special case - repositories file
 		if filepath.Base(header.Name) == "repositories" {
 			if err := writeRepositories(root, tarball); err != nil {
@@ -122,13 +120,21 @@ func (cli *DogestryCli) createFileFromTar(root string, header *tar.Header, tarba
 				return err
 			}
 
-			if wrote, err := io.Copy(destFile, tarball); err != nil {
-				return err
-			} else {
-				fmt.Printf("  tar: wrote %s\n", utils.HumanSize(wrote))
-			}
+			fileBuffer := new(bytes.Buffer)
+			fileBuffer.ReadFrom(tarball)
 
-			destFile.Close()
+			go func(headerName string, destFile *os.File, fileBuffer *bytes.Buffer) error {
+				if wrote, err := io.Copy(destFile, fileBuffer); err != nil {
+					fmt.Printf("  tar: failed to process %v\n", header.Name)
+					return err
+				} else {
+					fmt.Printf("  tar: processed %v (%v)\n", headerName, utils.HumanSize(wrote))
+					fileBuffer.Reset()
+				}
+
+				destFile.Close()
+				return nil
+			}(header.Name, destFile, fileBuffer)
 		}
 	}
 
