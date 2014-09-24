@@ -86,13 +86,9 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
 	}()
 
 	if err := cli.client.ExportImage(docker.ExportImageOptions{image, writer}); err != nil {
-		// this should stop the tar reader
-		writer.Close()
 		<-errch
 		return err
 	}
-
-	writer.Close()
 
 	// wait for the tar reader
 	if err := <-errch; err != nil {
