@@ -175,7 +175,7 @@ func (cli *DogestryCli) TempDir() string {
 func (cli *DogestryCli) WorkDir(suffix string) (string, error) {
 	path := filepath.Join(cli.TempDir(), strings.Replace(suffix, ":", "_", -1))
 
-	logger.Info("WorkDir: %s", path)
+	fmt.Printf("WorkDir: %v\n", path)
 
 	if err := os.MkdirAll(path, os.ModeDir|0700); err != nil {
 		return "", err
