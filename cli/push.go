@@ -121,13 +121,13 @@ func (cli *DogestryCli) createFileFromTar(root string, header *tar.Header, tarba
 			if err != nil {
 				return err
 			}
-			defer destFile.Close()
 
 			if wrote, err := io.Copy(destFile, tarball); err != nil {
 				return err
 			} else {
 				fmt.Printf("  tar: wrote %s\n", utils.HumanSize(wrote))
 			}
+
 			destFile.Close()
 		}
 	}
