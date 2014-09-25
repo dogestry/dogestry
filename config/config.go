@@ -13,10 +13,6 @@ type S3Config struct {
 	Secret_Key    string
 }
 
-type CompressorConfig struct {
-	Lz4 string
-}
-
 type DockerConfig struct {
 	Connection string
 }
@@ -28,7 +24,6 @@ type DogestryConfig struct {
 type Config struct {
 	Remote     map[string]*RemoteConfig
 	S3         S3Config
-	Compressor CompressorConfig
 	Docker     DockerConfig
 	Dogestry   DogestryConfig
 }

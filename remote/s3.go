@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/didip/dogestry/compressor"
 
 	"sync"
 	"fmt"
@@ -27,7 +26,6 @@ type S3Remote struct {
 	BucketName string
 	Bucket     *s3.Bucket
 	client     *s3.S3
-	compressor compressor.Compressor
 }
 
 var (
@@ -42,16 +40,10 @@ func NewS3Remote(config RemoteConfig) (*S3Remote, error) {
 
 	url := config.Url
 
-	//compressor,err := compressor.NewCompressor(config.Config)
-	//if err != nil {
-	//return nil,err
-	//}
-
 	return &S3Remote{
 		config:     config,
 		BucketName: url.Host,
 		client:     s3,
-		//compressor: compressor,
 	}, nil
 }
 
@@ -410,12 +402,6 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 
 	progressReader := utils.NewProgressReader(f, finfo.Size(), os.Stdout)
 
-	// XXX We don't know how big the file will be ahead of time!
-	//compressorReader,err := remote.compressor.CompressReader(progressReader)
-	//if err != nil {
-	//return err
-	//}
-
 	err = remote.getBucket().PutReader(dstKey, progressReader, finfo.Size(), "application/octet-stream", s3.Private, s3.Options{})
 	if err != nil {
 		return err
@@ -513,10 +499,3 @@ func (remote *S3Remote) remoteKey(key string) string {
 	return key
 }
 
-// TODO readd
-//// special case - compress layer.tar
-//if filepath.Base(dest) == "layer.tar" {
-//if err := cli.compressor.Compress(dest); err != nil {
-//return err
-//}
-//}
