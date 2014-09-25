@@ -36,7 +36,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 
 	fmt.Println("remote", r.Desc())
 
-	fmt.Println("resolving image id")
+	fmt.Printf("resolving image id for: %v\n", image)
 	id, err := r.ResolveImageNameToId(image)
 	if err != nil {
 		return err
@@ -65,8 +65,6 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 func (cli *DogestryCli) preparePullImage(fromId remote.ID, imageRoot string, r remote.Remote) error {
 	toDownload := make([]remote.ID, 0)
 
-	// TODO flatten this list, then iterate and pull each required file
-	// TODO parallelize
 	err := r.WalkImages(fromId, func(id remote.ID, image docker.Image, err error) error {
 		fmt.Printf("examining id '%s' on remote\n", id.Short())
 		if err != nil {
