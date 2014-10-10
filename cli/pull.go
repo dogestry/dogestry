@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/didip/dogestry/remote"
+	"github.com/newrelic-forks/dogestry/remote"
 )
 
 func (cli *DogestryCli) CmdPull(args ...string) error {

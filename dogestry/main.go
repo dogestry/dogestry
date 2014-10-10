@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	//"os"
+	"github.com/newrelic-forks/dogestry/cli"
 	"log"
 	"runtime"
-	"github.com/didip/dogestry/cli"
 )
 
 func main() {

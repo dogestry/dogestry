@@ -2,7 +2,7 @@ package cli
 
 import (
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/didip/dogestry/config"
+	"github.com/newrelic-forks/dogestry/config"
 
 	"flag"
 	"fmt"

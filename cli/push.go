@@ -3,8 +3,8 @@ package cli
 import (
 	"encoding/json"
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/didip/dogestry/remote"
-	"github.com/didip/dogestry/utils"
+	"github.com/newrelic-forks/dogestry/remote"
+	"github.com/newrelic-forks/dogestry/utils"
 
 	"archive/tar"
 	"fmt"
@@ -69,7 +69,9 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
 		// consume the tar
 		for {
 			header, err := tarball.Next()
-			if err == io.EOF { break }   // end of tar file
+			if err == io.EOF {
+				break
+			} // end of tar file
 
 			if err != nil {
 				errch <- err

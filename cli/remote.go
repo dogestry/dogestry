@@ -2,7 +2,7 @@ package cli
 
 import (
 	"fmt"
-	"github.com/didip/dogestry/remote"
+	"github.com/newrelic-forks/dogestry/remote"
 )
 
 func (cli *DogestryCli) CmdRemote(args ...string) error {

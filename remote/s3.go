@@ -3,18 +3,18 @@ package remote
 import (
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
-	"github.com/didip/dogestry/utils"
+	"github.com/newrelic-forks/dogestry/utils"
 
 	"bufio"
 	"encoding/json"
 
 	docker "github.com/fsouza/go-dockerclient"
 
-	"sync"
 	"fmt"
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"io"
@@ -90,7 +90,7 @@ func (remote *S3Remote) Desc() string {
 }
 
 type putFileTuple struct {
-	Key string
+	Key    string
 	KeyDef keyDef
 }
 
@@ -498,4 +498,3 @@ func (remote *S3Remote) imagePath(id ID) string {
 func (remote *S3Remote) remoteKey(key string) string {
 	return key
 }
-
