@@ -27,33 +27,35 @@ type DogestryCli struct {
 	err         io.Writer
 	tempDir     string
 	tempDirRoot string
+	DockerHost  string
 	Config      config.Config
 }
 
 func NewDogestryCli(config config.Config) (*DogestryCli, error) {
-	dockerConnection := config.Docker.Connection
+	dockerHost := config.Docker.Connection
 
 	if "" != os.Getenv("DOCKER_HOST") {
-		dockerConnection = os.Getenv("DOCKER_HOST")
+		dockerHost = os.Getenv("DOCKER_HOST")
 	}
 
-	if "" == dockerConnection {
-		dockerConnection = "tcp://localhost:2375"
+	if "" == dockerHost {
+		dockerHost = "tcp://localhost:2375"
 	} else {
 		fmt.Println("Docker connection set from file")
 	}
 
-	fmt.Printf("Using docker endpoint: [%s]\n", dockerConnection)
+	fmt.Printf("Using docker endpoint: [%s]\n", dockerHost)
 
-	newClient, err := docker.NewClient(dockerConnection)
+	newClient, err := docker.NewClient(dockerHost)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	return &DogestryCli{
-		Config: config,
-		client: *newClient,
-		err:    os.Stderr,
+		Config:     config,
+		client:     *newClient,
+		err:        os.Stderr,
+		DockerHost: dockerHost,
 	}, nil
 }
 
@@ -170,7 +172,9 @@ func (cli *DogestryCli) TempDir() string {
 
 // Creates and returns a workdir under TempDir
 func (cli *DogestryCli) WorkDir(suffix string) (string, error) {
-	path := filepath.Join(cli.TempDir(), strings.Replace(suffix, ":", "_", -1))
+	suffix = strings.Replace(suffix, ":", "_", -1)
+
+	path := filepath.Join(cli.TempDir(), suffix)
 
 	fmt.Printf("WorkDir: %v\n", path)
 
