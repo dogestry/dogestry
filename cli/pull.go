@@ -34,27 +34,28 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 		return err
 	}
 
-	fmt.Println("remote", r.Desc())
+	fmt.Printf("S3 Connection: %v\n", r.Desc())
 
-	fmt.Printf("resolving image id for: %v\n", image)
+	fmt.Printf("Image tag: %v\n", image)
+
 	id, err := r.ResolveImageNameToId(image)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("image '%s' resolved on remote id '%s'\n", image, id.Short())
+	fmt.Printf("Image '%s' resolved to ID '%s' on remote docker host(%v).\n", image, id.Short(), cli.DockerHost)
 
-	fmt.Println("preparing images")
+	fmt.Println("Downloading image layers from S3...")
 	if err := cli.preparePullImage(id, imageRoot, r); err != nil {
 		return err
 	}
 
-	fmt.Println("preparing repositories file")
+	fmt.Println("Generating repositories JSON file...")
 	if err := prepareRepositories(image, imageRoot, r); err != nil {
 		return err
 	}
 
-	fmt.Println("sending tar to docker")
+	fmt.Printf("Uploading image(%s) TAR file to docker host(%v)...\n", id.Short(), cli.DockerHost)
 	if err := cli.sendTar(image, id.String(), imageRoot); err != nil {
 		return err
 	}
@@ -66,7 +67,7 @@ func (cli *DogestryCli) preparePullImage(fromId remote.ID, imageRoot string, r r
 	toDownload := make([]remote.ID, 0)
 
 	err := r.WalkImages(fromId, func(id remote.ID, image docker.Image, err error) error {
-		fmt.Printf("examining id '%s' on remote\n", id.Short())
+		fmt.Printf("Examining id '%s' on remote docker host...\n", id.Short())
 		if err != nil {
 			fmt.Println("err", err)
 			return err
@@ -79,7 +80,7 @@ func (cli *DogestryCli) preparePullImage(fromId remote.ID, imageRoot string, r r
 		} else if err != nil {
 			return err
 		} else {
-			fmt.Printf("docker already has id '%s', stopping\n", id.Short())
+			fmt.Printf("Docker host already has id '%s', stop scanning.\n", id.Short())
 			return remote.BreakWalk
 		}
 	})
@@ -98,7 +99,7 @@ func (cli *DogestryCli) preparePullImage(fromId remote.ID, imageRoot string, r r
 }
 
 func (cli *DogestryCli) pullImage(id remote.ID, dst string, r remote.Remote) error {
-	fmt.Printf("Pulling image id '%s' to dst: %v\n", id.Short(), dst)
+	fmt.Printf("Pulling image id '%s' to: %v\n", id.Short(), dst)
 
 	return r.PullImageId(id, dst)
 }
