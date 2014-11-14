@@ -15,51 +15,66 @@ import (
 	"strings"
 )
 
-var (
-	DefaultConfigFilePath = "./dogestry.cfg"
-	DefaultConfig         = config.Config{
-		Remote: make(map[string]*config.RemoteConfig),
+func ParseCommands(configFilePath string, tempDirRoot string, args ...string) error {
+	cfg, err := config.NewConfig(configFilePath)
+	if err != nil {
+		return err
 	}
-)
+
+	dogestryCli, err := NewDogestryCli(cfg)
+	if err != nil {
+		return err
+	}
+	defer dogestryCli.Cleanup()
+
+	dogestryCli.tempDirRoot = tempDirRoot
+	if dogestryCli.tempDirRoot == "" {
+		dogestryCli.tempDirRoot = cfg.Dogestry.Temp_Dir
+	}
+
+	return dogestryCli.RunCmd(args...)
+
+	return nil
+}
+
+func NewDogestryCli(cfg config.Config) (*DogestryCli, error) {
+	var dockerHosts []string
+
+	if cfg.HasMoreThanOneDockerHosts() {
+		dockerHosts = cfg.GetDockerHosts()
+	} else {
+		dockerHosts = []string{cfg.GetDockerHost()}
+	}
+
+	fmt.Printf("Using docker endpoints: %v\n", dockerHosts)
+
+	dogestryCli := &DogestryCli{
+		Config:      cfg,
+		err:         os.Stderr,
+		DockerHosts: dockerHosts,
+	}
+
+	dogestryCli.Clients = make([]*docker.Client, 0)
+
+	for _, dockerHost := range dockerHosts {
+		newClient, err := docker.NewClient(dockerHost)
+		if err != nil {
+			return nil, err
+		}
+		dogestryCli.Clients = append(dogestryCli.Clients, newClient)
+	}
+
+	return dogestryCli, nil
+}
 
 type DogestryCli struct {
-	client      docker.Client
+	Clients     []*docker.Client
 	err         io.Writer
 	tempDir     string
 	tempDirRoot string
-	DockerHost  string
+	DockerHosts []string
 	Config      config.Config
 }
-
-func NewDogestryCli(config config.Config) (*DogestryCli, error) {
-	dockerHost := config.Docker.Connection
-
-	if "" != os.Getenv("DOCKER_HOST") {
-		dockerHost = os.Getenv("DOCKER_HOST")
-	}
-
-	if "" == dockerHost {
-		dockerHost = "tcp://localhost:2375"
-	} else {
-		fmt.Println("Docker connection set from file")
-	}
-
-	fmt.Printf("Using docker endpoint: [%s]\n", dockerHost)
-
-	newClient, err := docker.NewClient(dockerHost)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return &DogestryCli{
-		Config:     config,
-		client:     *newClient,
-		err:        os.Stderr,
-		DockerHost: dockerHost,
-	}, nil
-}
-
-// Note: snatched from docker
 
 func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
 	methodName := "Cmd" + strings.ToUpper(name[:1]) + strings.ToLower(name[1:])
@@ -70,23 +85,7 @@ func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
 	return method.Interface().(func(...string) error), true
 }
 
-func ParseCommands(configFilePath string, tempDirRoot string, args ...string) error {
-	config, err := parseConfig(configFilePath)
-	if err != nil {
-		return err
-	}
-
-	cli, err := NewDogestryCli(config)
-	if err != nil {
-		return err
-	}
-	defer cli.Cleanup()
-
-	cli.tempDirRoot = tempDirRoot
-	if cli.tempDirRoot == "" {
-		cli.tempDirRoot = config.Dogestry.Temp_Dir
-	}
-
+func (cli *DogestryCli) RunCmd(args ...string) error {
 	if len(args) > 0 {
 		method, exists := cli.getMethod(args[0])
 		if !exists {
@@ -96,21 +95,6 @@ func ParseCommands(configFilePath string, tempDirRoot string, args ...string) er
 		return method(args[1:]...)
 	}
 	return cli.CmdHelp(args...)
-}
-
-func parseConfig(configFilePath string) (cfg config.Config, err error) {
-	// no config file was specified
-	if configFilePath == "" {
-		// if default config exists use it
-		if _, err := os.Stat(DefaultConfigFilePath); !os.IsNotExist(err) {
-			configFilePath = DefaultConfigFilePath
-		} else {
-			fmt.Fprintln(os.Stdout, "Note: no config file found, using default config.")
-			return DefaultConfig, nil
-		}
-	}
-
-	return config.ParseConfig(configFilePath)
 }
 
 func (cli *DogestryCli) CmdHelp(args ...string) error {
@@ -128,13 +112,13 @@ func (cli *DogestryCli) CmdHelp(args ...string) error {
 		`Usage: dogestry [OPTIONS] COMMAND [arg...]
  Alternate registry and simple image storage for docker.
   Typical S3 Usage:
-     export AWS_ACCESS_KEY=ABC
-     export AWS_SECRET_KEY=DEF
-     dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
+	 export AWS_ACCESS_KEY=ABC
+	 export AWS_SECRET_KEY=DEF
+	 dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
   Commands:
-     pull - Pull an image from a remote
-     push  - Push an image to a remote
-     remote - Check a remote
+	 pull - Pull an image from a remote
+	 push  - Push an image to a remote
+	 remote - Check a remote
 `)
 	fmt.Println(help)
 	return nil
