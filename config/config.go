@@ -4,7 +4,6 @@ import (
 	"code.google.com/p/gcfg"
 	"fmt"
 	"os"
-	"strings"
 )
 
 var (
@@ -64,35 +63,4 @@ func (c *Config) GetDockerHost() string {
 		dockerHost = "tcp://localhost:2375"
 	}
 	return dockerHost
-}
-
-func (c *Config) GetDockerHosts() []string {
-	var dockerHosts []string
-
-	// Environment Variable takes higher precedence.
-	if "" != os.Getenv("DOCKER_HOSTS") {
-		dockerHosts = strings.Split(os.Getenv("DOCKER_HOSTS"), ",")
-		for i, dockerHost := range dockerHosts {
-			dockerHosts[i] = strings.TrimSpace(dockerHost)
-		}
-		return dockerHosts
-	}
-
-	for _, docker := range c.Dockers {
-		dockerHosts = append(dockerHosts, docker.Connection)
-	}
-
-	if len(dockerHosts) == 0 {
-		dockerHosts = []string{"tcp://localhost:2375"}
-	}
-
-	return dockerHosts
-}
-
-func (c *Config) HasMoreThanOneDockerHosts() bool {
-	if len(c.GetDockerHosts()) > 0 {
-		return true
-	} else {
-		return false
-	}
 }

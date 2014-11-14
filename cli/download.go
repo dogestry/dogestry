@@ -5,8 +5,8 @@ import (
 	"github.com/newrelic-forks/dogestry/remote"
 )
 
-func (cli *DogestryCli) CmdPull(args ...string) error {
-	cmd := cli.Subcmd("pull", "REMOTE IMAGE[:TAG]", "pull IMAGE from the REMOTE and load it into docker. TAG defaults to 'latest'")
+func (cli *DogestryCli) CmdDownload(args ...string) error {
+	cmd := cli.Subcmd("download", "REMOTE IMAGE[:TAG]", "pull IMAGE from the REMOTE and save it locally to -tempdir. TAG defaults to 'latest'")
 	if err := cmd.Parse(args); err != nil {
 		return nil
 	}
@@ -36,7 +36,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 		return err
 	}
 
-	fmt.Printf("Image '%s' resolved to ID '%s' on remote docker host: %v\n", image, id.Short(), cli.DockerHost)
+	fmt.Printf("Image '%s' resolved to ID '%s' on remote docker hosts: %v\n", image, id.Short(), cli.DockerHost)
 
 	fmt.Println("Downloading image and its layers from S3...")
 	if err := cli.pullImage(id, imageRoot, r); err != nil {
@@ -45,11 +45,6 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 
 	fmt.Println("Generating repositories JSON file...")
 	if err := cli.createRepositoriesJsonFile(image, imageRoot, r); err != nil {
-		return err
-	}
-
-	fmt.Printf("Importing image(%s) TAR file to docker hosts: %v\n", id.Short(), cli.DockerHost)
-	if err := cli.sendTar(imageRoot); err != nil {
 		return err
 	}
 

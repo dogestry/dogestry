@@ -40,7 +40,7 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 
 	fmt.Printf("Remote: %v\n", remote.Desc())
 
-	if err := cli.prepareImage(image, imageRoot); err != nil {
+	if err := cli.exportImageToFiles(image, imageRoot); err != nil {
 		return err
 	}
 
@@ -54,8 +54,8 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 
 // Stream the tarball from docker and translate it into the portable repo format
 // Note that its easier to handle as a stream on the way out.
-func (cli *DogestryCli) prepareImage(image, root string) error {
-	fmt.Printf("Preparing image (image: %v; root: %v)\n", image, root)
+func (cli *DogestryCli) exportImageToFiles(image, root string) error {
+	fmt.Printf("Exporting image: %v to: %v\n", image, root)
 
 	reader, writer := io.Pipe()
 	defer writer.Close()
@@ -64,14 +64,15 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
 	tarball := tar.NewReader(reader)
 
 	errch := make(chan error)
+	defer close(errch)
 
 	go func() {
-		// consume the tar
 		for {
 			header, err := tarball.Next()
+
 			if err == io.EOF {
 				break
-			} // end of tar file
+			}
 
 			if err != nil {
 				errch <- err
@@ -87,8 +88,7 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
 		errch <- nil
 	}()
 
-	if err := cli.client.ExportImage(docker.ExportImageOptions{image, writer}); err != nil {
-		<-errch
+	if err := cli.Client.ExportImage(docker.ExportImageOptions{image, writer}); err != nil {
 		return err
 	}
 
@@ -103,11 +103,11 @@ func (cli *DogestryCli) prepareImage(image, root string) error {
 func (cli *DogestryCli) createFileFromTar(root string, header *tar.Header, tarball io.Reader) error {
 	// only handle files (directories are implicit)
 	if header.Typeflag == tar.TypeReg {
-		fmt.Printf("  tar: processing %s\n", header.Name)
+		fmt.Printf("  tar: extracting file: %s\n", header.Name)
 
 		// special case - repositories file
 		if filepath.Base(header.Name) == "repositories" {
-			if err := writeRepositories(root, tarball); err != nil {
+			if err := createRepositoriesJsonFile(root, tarball); err != nil {
 				return err
 			}
 
@@ -127,7 +127,7 @@ func (cli *DogestryCli) createFileFromTar(root string, header *tar.Header, tarba
 			if wrote, err := io.Copy(destFile, tarball); err != nil {
 				return err
 			} else {
-				fmt.Printf("  tar: wrote %s\n", utils.HumanSize(wrote))
+				fmt.Printf("  tar: file created. Size: %s\n", utils.HumanSize(wrote))
 			}
 
 			destFile.Close()
@@ -139,7 +139,7 @@ func (cli *DogestryCli) createFileFromTar(root string, header *tar.Header, tarba
 
 type Repository map[string]string
 
-func writeRepositories(root string, tarball io.Reader) error {
+func createRepositoriesJsonFile(root string, tarball io.Reader) error {
 	destRoot := filepath.Join(root, "repositories")
 
 	repositories := map[string]Repository{}
