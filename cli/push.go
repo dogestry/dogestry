@@ -64,7 +64,6 @@ func (cli *DogestryCli) exportImageToFiles(image, root string) error {
 	tarball := tar.NewReader(reader)
 
 	errch := make(chan error)
-	defer close(errch)
 
 	go func() {
 		for {
