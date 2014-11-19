@@ -66,7 +66,7 @@ A common use case if you have a build server building and publishing images via 
      dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
      dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
      dogestry -tempdir /tmp download s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
-     dogestry upload <image dir>
+     dogestry upload <image dir> <repo name>
 ```
 
 
