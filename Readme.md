@@ -63,10 +63,10 @@ A common use case if you have a build server building and publishing images via 
      export AWS_ACCESS_KEY=ABC
      export AWS_SECRET_KEY=DEF
      export DOCKER_HOST=tcp://localhost:2375
-     dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
-     dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
-     dogestry -tempdir /tmp download s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
-     dogestry upload <image dir> <repo name>
+     dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <image name>
+     dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <image name>
+     dogestry -tempdir /tmp download s3://<bucket name>/<path name>/?region=us-east-1 <image name>
+     dogestry upload <image dir> <image name>
 ```
 
 
