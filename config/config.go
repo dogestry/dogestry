@@ -2,7 +2,30 @@ package config
 
 import (
 	"code.google.com/p/gcfg"
+	"fmt"
+	"os"
 )
+
+var (
+	DefaultConfigFilePath = "./dogestry.cfg"
+	DefaultConfig         = Config{
+		Remote: make(map[string]*RemoteConfig),
+	}
+)
+
+func NewConfig(configFilePath string) (config Config, err error) {
+	if configFilePath == "" {
+		if _, err := os.Stat(DefaultConfigFilePath); !os.IsNotExist(err) {
+			configFilePath = DefaultConfigFilePath
+		} else {
+			fmt.Fprintln(os.Stdout, "Note: no config file found, using default config.")
+			return DefaultConfig, nil
+		}
+	}
+
+	err = gcfg.ReadFileInto(&config, configFilePath)
+	return
+}
 
 type RemoteConfig struct {
 	Url string
@@ -22,13 +45,22 @@ type DogestryConfig struct {
 }
 
 type Config struct {
-	Remote     map[string]*RemoteConfig
-	S3         S3Config
-	Docker     DockerConfig
-	Dogestry   DogestryConfig
+	Remote   map[string]*RemoteConfig
+	S3       S3Config
+	Docker   DockerConfig
+	Dockers  []DockerConfig
+	Dogestry DogestryConfig
 }
 
-func ParseConfig(configFilePath string) (config Config, err error) {
-	err = gcfg.ReadFileInto(&config, configFilePath)
-	return
+func (c *Config) GetDockerHost() string {
+	dockerHost := c.Docker.Connection
+
+	if "" != os.Getenv("DOCKER_HOST") {
+		dockerHost = os.Getenv("DOCKER_HOST")
+	}
+
+	if "" == dockerHost {
+		dockerHost = "tcp://localhost:2375"
+	}
+	return dockerHost
 }

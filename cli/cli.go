@@ -1,65 +1,49 @@
 package cli
 
 import (
-	docker "github.com/fsouza/go-dockerclient"
-	"github.com/newrelic-forks/dogestry/config"
-
+	"encoding/json"
 	"flag"
 	"fmt"
+	docker "github.com/fsouza/go-dockerclient"
+	"github.com/newrelic-forks/dogestry/config"
+	"github.com/newrelic-forks/dogestry/remote"
+	"github.com/newrelic-forks/dogestry/utils"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
 )
 
-var (
-	DefaultConfigFilePath = "./dogestry.cfg"
-	DefaultConfig         = config.Config{
-		Remote: make(map[string]*config.RemoteConfig),
+func NewDogestryCli(cfg config.Config) (*DogestryCli, error) {
+	dogestryCli := &DogestryCli{
+		Config:     cfg,
+		err:        os.Stderr,
+		DockerHost: cfg.GetDockerHost(),
 	}
-)
+
+	newClient, err := docker.NewClient(dogestryCli.DockerHost)
+	if err != nil {
+		return nil, err
+	}
+	dogestryCli.Client = newClient
+
+	fmt.Printf("Using docker endpoint: %v\n", dogestryCli.DockerHost)
+
+	return dogestryCli, nil
+}
 
 type DogestryCli struct {
-	client      docker.Client
+	Client      *docker.Client
 	err         io.Writer
-	tempDir     string
-	tempDirRoot string
+	TempDir     string
+	TempDirRoot string
 	DockerHost  string
 	Config      config.Config
 }
-
-func NewDogestryCli(config config.Config) (*DogestryCli, error) {
-	dockerHost := config.Docker.Connection
-
-	if "" != os.Getenv("DOCKER_HOST") {
-		dockerHost = os.Getenv("DOCKER_HOST")
-	}
-
-	if "" == dockerHost {
-		dockerHost = "tcp://localhost:2375"
-	} else {
-		fmt.Println("Docker connection set from file")
-	}
-
-	fmt.Printf("Using docker endpoint: [%s]\n", dockerHost)
-
-	newClient, err := docker.NewClient(dockerHost)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return &DogestryCli{
-		Config:     config,
-		client:     *newClient,
-		err:        os.Stderr,
-		DockerHost: dockerHost,
-	}, nil
-}
-
-// Note: snatched from docker
 
 func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
 	methodName := "Cmd" + strings.ToUpper(name[:1]) + strings.ToLower(name[1:])
@@ -70,23 +54,7 @@ func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
 	return method.Interface().(func(...string) error), true
 }
 
-func ParseCommands(configFilePath string, tempDirRoot string, args ...string) error {
-	config, err := parseConfig(configFilePath)
-	if err != nil {
-		return err
-	}
-
-	cli, err := NewDogestryCli(config)
-	if err != nil {
-		return err
-	}
-	defer cli.Cleanup()
-
-	cli.tempDirRoot = tempDirRoot
-	if cli.tempDirRoot == "" {
-		cli.tempDirRoot = config.Dogestry.Temp_Dir
-	}
-
+func (cli *DogestryCli) RunCmd(args ...string) error {
 	if len(args) > 0 {
 		method, exists := cli.getMethod(args[0])
 		if !exists {
@@ -96,21 +64,6 @@ func ParseCommands(configFilePath string, tempDirRoot string, args ...string) er
 		return method(args[1:]...)
 	}
 	return cli.CmdHelp(args...)
-}
-
-func parseConfig(configFilePath string) (cfg config.Config, err error) {
-	// no config file was specified
-	if configFilePath == "" {
-		// if default config exists use it
-		if _, err := os.Stat(DefaultConfigFilePath); !os.IsNotExist(err) {
-			configFilePath = DefaultConfigFilePath
-		} else {
-			fmt.Fprintln(os.Stdout, "Note: no config file found, using default config.")
-			return DefaultConfig, nil
-		}
-	}
-
-	return config.ParseConfig(configFilePath)
 }
 
 func (cli *DogestryCli) CmdHelp(args ...string) error {
@@ -126,15 +79,21 @@ func (cli *DogestryCli) CmdHelp(args ...string) error {
 
 	help := fmt.Sprintf(
 		`Usage: dogestry [OPTIONS] COMMAND [arg...]
- Alternate registry and simple image storage for docker.
+Alternate registry and simple image storage for docker.
   Typical S3 Usage:
      export AWS_ACCESS_KEY=ABC
      export AWS_SECRET_KEY=DEF
-     dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
+     export DOCKER_HOST=tcp://localhost:2375
+     dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <image name>
+     dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <image name>
+     dogestry -tempdir /tmp download s3://<bucket name>/<path name>/?region=us-east-1 <image name>
+     dogestry upload <image dir> <image name>
   Commands:
-     pull - Pull an image from a remote
-     push  - Push an image to a remote
-     remote - Check a remote
+  	 download - Download IMAGE from S3 and save it locally to -tempdir. TAG defaults to 'latest'
+  	 upload   - Upload image saved on IMAGE_DIR into docker
+	 pull     - Pull IMAGE from S3 and load it into docker. TAG defaults to 'latest'
+	 push     - Push IMAGE to S3. TAG defaults to 'latest'
+	 remote   - Check a remote
 `)
 	fmt.Println(help)
 	return nil
@@ -150,31 +109,33 @@ func (cli *DogestryCli) Subcmd(name, signature, description string) *flag.FlagSe
 	return flags
 }
 
-// Creates and returns temporary work dir
+// CreateAndReturnTempDir creates and returns temporary work dir
 // This dir is cleaned up on exit
-func (cli *DogestryCli) TempDir() string {
-	if cli.tempDir == "" {
-		if cli.tempDirRoot != "" {
-			if err := os.MkdirAll(cli.tempDirRoot, 0755); err != nil {
+func (cli *DogestryCli) CreateAndReturnTempDir() string {
+	if cli.TempDir == "" {
+		if cli.TempDirRoot != "" {
+			if err := os.MkdirAll(cli.TempDirRoot, 0755); err != nil {
 				log.Fatal(err)
 			}
-		}
+			cli.TempDir = cli.TempDirRoot
 
-		if tempDir, err := ioutil.TempDir(cli.tempDirRoot, "dogestry"); err != nil {
-			log.Fatal(err)
 		} else {
-			cli.tempDir = tempDir
+			if tempDir, err := ioutil.TempDir(cli.TempDirRoot, "dogestry"); err != nil {
+				log.Fatal(err)
+			} else {
+				cli.TempDir = tempDir
+			}
 		}
 	}
 
-	return cli.tempDir
+	return cli.TempDir
 }
 
-// Creates and returns a workdir under TempDir
-func (cli *DogestryCli) WorkDir(suffix string) (string, error) {
+// WorkDirGivenBaseDir creates temporary dir
+func (cli *DogestryCli) WorkDirGivenBaseDir(basedir, suffix string) (string, error) {
 	suffix = strings.Replace(suffix, ":", "_", -1)
 
-	path := filepath.Join(cli.TempDir(), suffix)
+	path := filepath.Join(basedir, suffix)
 
 	fmt.Printf("WorkDir: %v\n", path)
 
@@ -185,11 +146,121 @@ func (cli *DogestryCli) WorkDir(suffix string) (string, error) {
 	return path, nil
 }
 
+// WorkDir creates temporary dir
+func (cli *DogestryCli) WorkDir(suffix string) (string, error) {
+	suffix = strings.Replace(suffix, ":", "_", -1)
+	basedir := cli.CreateAndReturnTempDir()
+
+	return cli.WorkDirGivenBaseDir(basedir, suffix)
+}
+
 // clean up the tempDir
 func (cli *DogestryCli) Cleanup() {
-	if cli.tempDir != "" {
-		if err := os.RemoveAll(cli.tempDir); err != nil {
+	if cli.TempDir != "" {
+		if err := os.RemoveAll(cli.TempDir); err != nil {
 			log.Println(err)
 		}
 	}
+}
+
+func (cli *DogestryCli) getLayerIdsToDownload(fromId remote.ID, imageRoot string, r remote.Remote) ([]remote.ID, error) {
+	toDownload := make([]remote.ID, 0)
+
+	err := r.WalkImages(fromId, func(id remote.ID, image docker.Image, err error) error {
+		fmt.Printf("Examining id '%s' on remote docker host...\n", id.Short())
+		if err != nil {
+			return err
+		}
+
+		_, err = cli.Client.InspectImage(string(id))
+
+		if err == docker.ErrNoSuchImage {
+			toDownload = append(toDownload, id)
+			return nil
+		} else if err != nil {
+			return err
+		} else {
+			fmt.Printf("Docker host already has id '%s', stop scanning.\n", id.Short())
+			return remote.BreakWalk
+		}
+
+		return nil
+	})
+
+	return toDownload, err
+}
+
+func (cli *DogestryCli) pullImage(fromId remote.ID, imageRoot string, r remote.Remote) error {
+	toDownload, err := cli.getLayerIdsToDownload(fromId, imageRoot, r)
+	if err != nil {
+		return err
+	}
+
+	for _, id := range toDownload {
+		downloadPath := filepath.Join(imageRoot, string(id))
+
+		fmt.Printf("Pulling image id '%s' to: %v\n", id.Short(), downloadPath)
+
+		err := r.PullImageId(id, downloadPath)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (cli *DogestryCli) createRepositoriesJsonFile(image, imageRoot string, r remote.Remote) error {
+	repoName, repoTag := remote.NormaliseImageName(image)
+
+	id, err := r.ParseTag(repoName, repoTag)
+	if err != nil {
+		return err
+	} else if id == "" {
+		return nil
+	}
+
+	reposPath := filepath.Join(imageRoot, "repositories")
+	reposFile, err := os.Create(reposPath)
+	if err != nil {
+		return err
+	}
+	defer reposFile.Close()
+
+	repositories := map[string]Repository{}
+	repositories[repoName] = Repository{}
+	repositories[repoName][repoTag] = string(id)
+
+	return json.NewEncoder(reposFile).Encode(&repositories)
+}
+
+// sendTar streams exported tarball into remote docker
+func (cli *DogestryCli) sendTar(imageRoot string) error {
+	notExist, err := utils.DirNotExistOrEmpty(imageRoot)
+
+	if err != nil {
+		return err
+	}
+	if notExist {
+		fmt.Println("local directory is empty")
+		return nil
+	}
+
+	cmd := exec.Command("tar", "cvf", "-", "-C", imageRoot, ".")
+	cmd.Env = os.Environ()
+	cmd.Dir = imageRoot
+	defer cmd.Wait()
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	cli.Client.LoadImage(docker.LoadImageOptions{InputStream: stdout})
+
+	return nil
 }

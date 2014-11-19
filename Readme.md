@@ -7,8 +7,7 @@ This is a simple client you can run where you run docker - and you don't need a 
 
 ## prerequisites
 
-* [lz4][lz4] -  compiled and on the path
-* go 1.2
+* go 1.2 or higher
 * docker
 
 Currently, the user running dogestry needs permissions to access the docker socket. [See here for more info][docker-sudo]
@@ -62,9 +61,12 @@ A common use case if you have a build server building and publishing images via 
 ```
   Typical S3 Usage:
      export AWS_ACCESS_KEY=ABC
-     export export AWS_SECRET_KEY=DEF
-     dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
-     dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
+     export AWS_SECRET_KEY=DEF
+     export DOCKER_HOST=tcp://localhost:2375
+     dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <image name>
+     dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <image name>
+     dogestry -tempdir /tmp download s3://<bucket name>/<path name>/?region=us-east-1 <image name>
+     dogestry upload <image dir> <image name>
 ```
 
 

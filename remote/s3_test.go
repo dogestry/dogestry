@@ -27,7 +27,7 @@ func Test(t *testing.T) {
 
 type S struct {
 	remote  *S3Remote
-	tempDir string
+	TempDir string
 }
 
 var _ = Suite(&S{})
@@ -54,7 +54,7 @@ func (s *S) SetUpSuite(c *C) {
 		c.Fatalf("couldn't get tempdir: %s", err)
 	}
 
-	s.tempDir = tempDir
+	s.TempDir = tempDir
 
 	s.remote = &S3Remote{
 		config:     baseConfig,
@@ -64,7 +64,7 @@ func (s *S) SetUpSuite(c *C) {
 }
 
 func (s *S) TearDownSuite(c *C) {
-	defer os.RemoveAll(s.tempDir)
+	defer os.RemoveAll(s.TempDir)
 }
 
 func (s *S) TestBucket(c *C) {
@@ -96,18 +96,18 @@ func (s *S) TestRepoKeys(c *C) {
 }
 
 func (s *S) TestLocalKeys(c *C) {
-	dumpFile(s.tempDir, "file1", "hello world")
-	dumpFile(s.tempDir, "dir/file2", "hello mars")
+	dumpFile(s.TempDir, "file1", "hello world")
+	dumpFile(s.TempDir, "dir/file2", "hello mars")
 
-	keys, err := s.remote.localKeys(s.tempDir)
+	keys, err := s.remote.localKeys(s.TempDir)
 	c.Assert(err, IsNil)
 
 	c.Assert(keys["file1"].key, Equals, "file1")
-	c.Assert(keys["file1"].fullPath, Equals, filepath.Join(s.tempDir, "file1"))
+	c.Assert(keys["file1"].fullPath, Equals, filepath.Join(s.TempDir, "file1"))
 	c.Assert(keys["file1"].sum, Equals, "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed")
 
 	c.Assert(keys["dir/file2"].key, Equals, "dir/file2")
-	c.Assert(keys["dir/file2"].fullPath, Equals, filepath.Join(s.tempDir, "dir/file2"))
+	c.Assert(keys["dir/file2"].fullPath, Equals, filepath.Join(s.TempDir, "dir/file2"))
 	c.Assert(keys["dir/file2"].sum, Equals, "dd6944c43fabd03cf643fe0daf625759dbdea808")
 }
 

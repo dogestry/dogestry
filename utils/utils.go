@@ -1,14 +1,14 @@
 package utils
 
 import (
-  "fmt"
-  "os"
-
-  "crypto/md5"
-  "crypto/sha1"
-  "encoding/hex"
-  "bufio"
-  "io"
+	"bufio"
+	"crypto/md5"
+	"crypto/sha1"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
 )
 
 // HumanSize returns a human-readable approximation of a size
@@ -25,49 +25,70 @@ func HumanSize(size int64) string {
 	return fmt.Sprintf("%.4g %s", sizef, units[i])
 }
 
-
 func FileHumanSize(path string) string {
-  var size int64
-  info,err := os.Stat(path)
-  if err != nil {
-    size = 0
-  } else {
-    size = info.Size()
-  }
+	var size int64
+	info, err := os.Stat(path)
+	if err != nil {
+		size = 0
+	} else {
+		size = info.Size()
+	}
 
-  return HumanSize(size)
+	return HumanSize(size)
 }
-
 
 // md5 file at path
 func Md5File(path string) (string, error) {
-  f, err := os.Open(path)
-  if err != nil {
-    return "", nil
-  }
-  defer f.Close()
+	f, err := os.Open(path)
+	if err != nil {
+		return "", nil
+	}
+	defer f.Close()
 
-  // files could be pretty big, lets buffer
-  buff := bufio.NewReader(f)
-  hash := md5.New()
+	// files could be pretty big, lets buffer
+	buff := bufio.NewReader(f)
+	hash := md5.New()
 
-  io.Copy(hash, buff)
-  return hex.EncodeToString(hash.Sum(nil)), nil
+	io.Copy(hash, buff)
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
-
 
 // sha1 file at path
 func Sha1File(path string) (string, error) {
-  f, err := os.Open(path)
-  if err != nil {
-    return "", nil
-  }
-  defer f.Close()
+	f, err := os.Open(path)
+	if err != nil {
+		return "", nil
+	}
+	defer f.Close()
 
-  // files could be pretty big, lets buffer
-  buff := bufio.NewReader(f)
-  hash := sha1.New()
+	// files could be pretty big, lets buffer
+	buff := bufio.NewReader(f)
+	hash := sha1.New()
 
-  io.Copy(hash, buff)
-  return hex.EncodeToString(hash.Sum(nil)), nil
+	io.Copy(hash, buff)
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func DirNotExistOrEmpty(path string) (bool, error) {
+	imagesDir, err := os.Open(path)
+	if err != nil {
+		// no images
+		if os.IsNotExist(err) {
+			return true, nil
+		} else {
+			return false, err
+		}
+	}
+	defer imagesDir.Close()
+
+	names, err := ioutil.ReadDir(path)
+	if err != nil {
+		return false, err
+	}
+
+	if len(names) <= 1 {
+		return true, nil
+	}
+
+	return false, nil
 }

@@ -2,8 +2,9 @@ package main
 
 import (
 	"flag"
-	//"os"
+	"fmt"
 	"github.com/newrelic-forks/dogestry/cli"
+	"github.com/newrelic-forks/dogestry/config"
 	"log"
 	"runtime"
 )
@@ -15,10 +16,33 @@ func main() {
 	flTempDir := flag.String("tempdir", "", "an alternate tempdir to use")
 	flag.Parse()
 
-	err := cli.ParseCommands(*flConfigFile, *flTempDir, flag.Args()...)
+	args := flag.Args()
 
+	cfg, err := config.NewConfig(*flConfigFile)
 	if err != nil {
-		log.Println("err")
+		log.Fatal(err)
+	}
+
+	dogestryCli, err := cli.NewDogestryCli(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dogestryCli.TempDirRoot = *flTempDir
+	if dogestryCli.TempDirRoot == "" {
+		dogestryCli.TempDirRoot = cfg.Dogestry.Temp_Dir
+	}
+
+	err = dogestryCli.RunCmd(args...)
+
+	if err == nil {
+		if args[0] == "download" {
+			fmt.Printf("%v\n", dogestryCli.TempDir)
+		} else {
+			dogestryCli.Cleanup()
+		}
+	} else {
+		dogestryCli.Cleanup()
 		log.Fatal(err)
 	}
 }

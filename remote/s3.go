@@ -110,7 +110,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 	putFileErrMap := make(map[string]error)
 	putFilesChan := make(chan putFileTuple, len(keysToPush))
 
-	numGoroutines := 50
+	numGoroutines := 100
 
 	var wg sync.WaitGroup
 
@@ -121,7 +121,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 			for putFileArguments := range putFilesChan {
 				putFileErr := remote.putFile(putFileArguments.KeyDef.fullPath, &putFileArguments.KeyDef)
 
-				if (putFileErr != nil) && (putFileErr != io.EOF) {
+				if (putFileErr != nil) && ((putFileErr != io.EOF) || (!strings.Contains(putFileErr.Error(), "EOF"))) {
 					putFileErrMap[putFileArguments.Key] = putFileErr
 				}
 			}
