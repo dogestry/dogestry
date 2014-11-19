@@ -117,12 +117,14 @@ func (cli *DogestryCli) CreateAndReturnTempDir() string {
 			if err := os.MkdirAll(cli.TempDirRoot, 0755); err != nil {
 				log.Fatal(err)
 			}
-		}
+			cli.TempDir = cli.TempDirRoot
 
-		if tempDir, err := ioutil.TempDir(cli.TempDirRoot, "dogestry"); err != nil {
-			log.Fatal(err)
 		} else {
-			cli.TempDir = tempDir
+			if tempDir, err := ioutil.TempDir(cli.TempDirRoot, "dogestry"); err != nil {
+				log.Fatal(err)
+			} else {
+				cli.TempDir = tempDir
+			}
 		}
 	}
 
