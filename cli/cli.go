@@ -87,7 +87,7 @@ Alternate registry and simple image storage for docker.
      dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
      dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
      dogestry -tempdir /tmp download s3://<bucket name>/<path name>/?region=us-east-1 <repo name>
-     dogestry upload <image dir>
+     dogestry upload <image dir> <repo name>
   Commands:
   	 download - Download IMAGE from S3 and save it locally to -tempdir. TAG defaults to 'latest'
   	 upload   - Upload image saved on IMAGE_DIR into docker
