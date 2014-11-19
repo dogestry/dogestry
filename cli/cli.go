@@ -131,11 +131,11 @@ func (cli *DogestryCli) CreateAndReturnTempDir() string {
 	return cli.TempDir
 }
 
-// Creates and returns a workdir under TempDir
-func (cli *DogestryCli) WorkDir(suffix string) (string, error) {
+// WorkDirGivenBaseDir creates temporary dir
+func (cli *DogestryCli) WorkDirGivenBaseDir(basedir, suffix string) (string, error) {
 	suffix = strings.Replace(suffix, ":", "_", -1)
 
-	path := filepath.Join(cli.CreateAndReturnTempDir(), suffix)
+	path := filepath.Join(basedir, suffix)
 
 	fmt.Printf("WorkDir: %v\n", path)
 
@@ -144,6 +144,14 @@ func (cli *DogestryCli) WorkDir(suffix string) (string, error) {
 	}
 
 	return path, nil
+}
+
+// WorkDir creates temporary dir
+func (cli *DogestryCli) WorkDir(suffix string) (string, error) {
+	suffix = strings.Replace(suffix, ":", "_", -1)
+	basedir := cli.CreateAndReturnTempDir()
+
+	return cli.WorkDirGivenBaseDir(basedir, suffix)
 }
 
 // clean up the tempDir
