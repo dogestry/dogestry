@@ -36,7 +36,7 @@ func main() {
 	err = dogestryCli.RunCmd(args...)
 
 	if err == nil {
-		if args[0] == "download" {
+		if len(args) > 0 && args[0] == "download" {
 			fmt.Printf("%v\n", dogestryCli.TempDir)
 		} else {
 			dogestryCli.Cleanup()
