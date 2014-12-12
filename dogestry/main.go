@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/newrelic-forks/dogestry/cli"
-	"github.com/newrelic-forks/dogestry/config"
+	"github.com/dogestry/dogestry/cli"
+	"github.com/dogestry/dogestry/config"
 	"log"
 	"runtime"
 )

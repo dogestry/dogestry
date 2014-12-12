@@ -2,9 +2,9 @@ package cli
 
 import (
 	"encoding/json"
+	"github.com/dogestry/dogestry/remote"
+	"github.com/dogestry/dogestry/utils"
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/newrelic-forks/dogestry/remote"
-	"github.com/newrelic-forks/dogestry/utils"
 
 	"archive/tar"
 	"fmt"

@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/dogestry/dogestry/config"
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/newrelic-forks/dogestry/config"
 )
 
 var (
