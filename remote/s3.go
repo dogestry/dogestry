@@ -3,7 +3,7 @@ package remote
 import (
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
-	"github.com/newrelic-forks/dogestry/utils"
+	"github.com/dogestry/dogestry/utils"
 
 	"bufio"
 	"encoding/json"

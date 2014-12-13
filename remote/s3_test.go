@@ -18,7 +18,7 @@ import (
 	"github.com/crowdmob/goamz/testutil"
 	. "gopkg.in/check.v1"
 
-	"github.com/newrelic-forks/dogestry/config"
+	"github.com/dogestry/dogestry/config"
 )
 
 func Test(t *testing.T) {
