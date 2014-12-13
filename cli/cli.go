@@ -13,6 +13,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -25,7 +26,20 @@ func NewDogestryCli(cfg config.Config) (*DogestryCli, error) {
 		DockerHost: cfg.GetDockerHost(),
 	}
 
-	newClient, err := docker.NewClient(dogestryCli.DockerHost)
+	var err error
+	var newClient *docker.Client
+	dockerCertPath := os.Getenv("DOCKER_CERT_PATH")
+
+	if dockerCertPath != "" {
+		cert := path.Join(dockerCertPath, "cert.pem")
+		key := path.Join(dockerCertPath, "key.pem")
+		ca := path.Join(dockerCertPath, "ca.pem")
+
+		newClient, err = docker.NewTLSClient(dogestryCli.DockerHost, cert, key, ca)
+	} else {
+		newClient, err = docker.NewClient(dogestryCli.DockerHost)
+	}
+
 	if err != nil {
 		return nil, err
 	}
