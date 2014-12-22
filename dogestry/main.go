@@ -9,16 +9,22 @@ import (
 	"runtime"
 )
 
+var flConfigFile string
+var flTempDir string
+
+func init() {
+	flag.StringVar(&flConfigFile, "config", "", "the dogestry config file (defaults to 'dogestry.cfg' in the current directory). Config is optional - if using s3 you can use env vars or signed URLs.")
+	flag.StringVar(&flTempDir, "tempdir", "", "an alternate tempdir to use")
+}
+
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	flConfigFile := flag.String("config", "", "the dogestry config file (defaults to 'dogestry.cfg' in the current directory). Config is optional - if using s3 you can use env vars or signed URLs.")
-	flTempDir := flag.String("tempdir", "", "an alternate tempdir to use")
 	flag.Parse()
 
 	args := flag.Args()
 
-	cfg, err := config.NewConfig(*flConfigFile)
+	cfg, err := config.NewConfig(flConfigFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -28,7 +34,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dogestryCli.TempDirRoot = *flTempDir
+	dogestryCli.TempDirRoot = flTempDir
 	if dogestryCli.TempDirRoot == "" {
 		dogestryCli.TempDirRoot = cfg.Dogestry.Temp_Dir
 	}
