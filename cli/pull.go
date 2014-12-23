@@ -36,10 +36,16 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 		return err
 	}
 
-	fmt.Printf("Image '%s' resolved to ID '%s' on remote docker host: %v\n", image, id.Short(), cli.DockerHost)
+	fmt.Printf("Image '%s' resolved to ID '%s'\n", image, id.Short())
 
-	fmt.Println("Downloading image and its layers from S3...")
-	if err := cli.pullImage(id, imageRoot, r); err != nil {
+	fmt.Println("Determining which images need to be downloaded from S3...")
+	downloadMap, err := cli.makeDownloadMap(r, id, imageRoot)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Downloading images from S3...")
+	if err := cli.downloadImages(r, downloadMap, imageRoot); err != nil {
 		return err
 	}
 
@@ -48,7 +54,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 		return err
 	}
 
-	fmt.Printf("Importing image(%s) TAR file to docker hosts: %v\n", id.Short(), cli.DockerHost)
+	fmt.Printf("Importing image(%s) TAR file to docker hosts: %v\n", id.Short(), cli.PullHosts)
 	if err := cli.sendTar(imageRoot); err != nil {
 		return err
 	}

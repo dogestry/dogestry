@@ -45,7 +45,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dogestryCli, err := cli.NewDogestryCli(cfg)
+	dogestryCli, err := cli.NewDogestryCli(cfg, flHosts)
 	if err != nil {
 		log.Fatal(err)
 	}
