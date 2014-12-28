@@ -35,7 +35,7 @@ var (
 func NewS3Remote(config RemoteConfig) (*S3Remote, error) {
 	s3, err := newS3Client(config)
 	if err != nil {
-		return &S3Remote{}, nil
+		return &S3Remote{}, err
 	}
 
 	url := config.Url
