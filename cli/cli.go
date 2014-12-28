@@ -8,12 +8,12 @@ import (
 	"github.com/dogestry/dogestry/remote"
 	"github.com/dogestry/dogestry/utils"
 	docker "github.com/fsouza/go-dockerclient"
+	homedir "github.com/mitchellh/go-homedir"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
-	"os/user"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -31,8 +31,7 @@ func NewDogestryCli(cfg config.Config) (*DogestryCli, error) {
 	var newClient *docker.Client
 	dockerCertPath := os.Getenv("DOCKER_CERT_PATH")
 
-	usr, _ := user.Current()
-	homeDir := usr.HomeDir
+	homeDir, _ := homedir.Dir()
 	dockerConfigDir := path.Join(homeDir, ".docker")
 
 	_, err = os.Stat(path.Join(dockerConfigDir, "cert.pem"))
