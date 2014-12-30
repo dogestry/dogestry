@@ -18,15 +18,10 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 )
 
-func NewDogestryCli(cfg config.Config) (*DogestryCli, error) {
-	dogestryCli := &DogestryCli{
-		Config:     cfg,
-		err:        os.Stderr,
-		DockerHost: cfg.GetDockerHost(),
-	}
-
+func newDockerClient(host string) (*docker.Client, error) {
 	var err error
 	var newClient *docker.Client
 	dockerCertPath := os.Getenv("DOCKER_CERT_PATH")
@@ -52,17 +47,49 @@ func NewDogestryCli(cfg config.Config) (*DogestryCli, error) {
 		key := path.Join(dockerCertPath, "key.pem")
 		ca := path.Join(dockerCertPath, "ca.pem")
 
-		newClient, err = docker.NewTLSClient(dogestryCli.DockerHost, cert, key, ca)
+		newClient, err = docker.NewTLSClient(host, cert, key, ca)
 	} else {
-		newClient, err = docker.NewClient(dogestryCli.DockerHost)
+		newClient, err = docker.NewClient(host)
 	}
 
 	if err != nil {
 		return nil, err
 	}
-	dogestryCli.Client = newClient
+	return newClient, err
+}
 
-	fmt.Printf("Using docker endpoint: %v\n", dogestryCli.DockerHost)
+func NewDogestryCli(cfg config.Config, hosts []string) (*DogestryCli, error) {
+	dogestryCli := &DogestryCli{
+		Config:     cfg,
+		err:        os.Stderr,
+		DockerHost: cfg.GetDockerHost(),
+		PullHosts:  hosts,
+	}
+
+	var err error
+
+	dogestryCli.Client, err = newDockerClient(dogestryCli.DockerHost)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Using docker endpoint for push: %v\n", dogestryCli.DockerHost)
+
+	if len(dogestryCli.PullHosts) > 0 {
+		var client *docker.Client
+		for _, host := range dogestryCli.PullHosts {
+			client, err = newDockerClient(host)
+			if err != nil {
+				log.Fatal(err)
+			}
+			dogestryCli.PullClients = append(dogestryCli.PullClients, client)
+		}
+	} else {
+		dogestryCli.PullHosts = []string{dogestryCli.DockerHost}
+		dogestryCli.PullClients = []*docker.Client{dogestryCli.Client}
+	}
+
+	fmt.Printf("Using docker endpoints for pull: %v\n", dogestryCli.PullHosts)
 
 	return dogestryCli, nil
 }
@@ -74,6 +101,8 @@ type DogestryCli struct {
 	TempDirRoot string
 	DockerHost  string
 	Config      config.Config
+	PullHosts   []string
+	PullClients []*docker.Client
 }
 
 func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
@@ -117,6 +146,7 @@ Alternate registry and simple image storage for docker.
      export DOCKER_HOST=tcp://localhost:2375
      dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <image name>
      dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <image name>
+     dogestry -pullhosts tcp://host-1:2375,tcp://host-2:2375 pull s3://<bucket name>/<path name>/ <image name>
      dogestry -tempdir /tmp download s3://<bucket name>/<path name>/?region=us-east-1 <image name>
      dogestry upload <image dir> <image name>
   Commands:
@@ -194,7 +224,7 @@ func (cli *DogestryCli) Cleanup() {
 	}
 }
 
-func (cli *DogestryCli) getLayerIdsToDownload(fromId remote.ID, imageRoot string, r remote.Remote) ([]remote.ID, error) {
+func (cli *DogestryCli) getLayerIdsToDownload(fromId remote.ID, imageRoot string, r remote.Remote, client *docker.Client) ([]remote.ID, error) {
 	toDownload := make([]remote.ID, 0)
 
 	err := r.WalkImages(fromId, func(id remote.ID, image docker.Image, err error) error {
@@ -203,7 +233,7 @@ func (cli *DogestryCli) getLayerIdsToDownload(fromId remote.ID, imageRoot string
 			return err
 		}
 
-		_, err = cli.Client.InspectImage(string(id))
+		_, err = client.InspectImage(string(id))
 
 		if err == docker.ErrNoSuchImage {
 			toDownload = append(toDownload, id)
@@ -222,7 +252,7 @@ func (cli *DogestryCli) getLayerIdsToDownload(fromId remote.ID, imageRoot string
 }
 
 func (cli *DogestryCli) pullImage(fromId remote.ID, imageRoot string, r remote.Remote) error {
-	toDownload, err := cli.getLayerIdsToDownload(fromId, imageRoot, r)
+	toDownload, err := cli.getLayerIdsToDownload(fromId, imageRoot, r, cli.Client)
 	if err != nil {
 		return err
 	}
@@ -265,7 +295,7 @@ func (cli *DogestryCli) createRepositoriesJsonFile(image, imageRoot string, r re
 	return json.NewEncoder(reposFile).Encode(&repositories)
 }
 
-// sendTar streams exported tarball into remote docker
+// sendTar streams exported tarball into remote docker hosts
 func (cli *DogestryCli) sendTar(imageRoot string) error {
 	notExist, err := utils.DirNotExistOrEmpty(imageRoot)
 
@@ -277,21 +307,97 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 		return nil
 	}
 
-	cmd := exec.Command("tar", "cvf", "-", "-C", imageRoot, ".")
-	cmd.Env = os.Environ()
-	cmd.Dir = imageRoot
-	defer cmd.Wait()
+	var wg sync.WaitGroup
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
+	uploadImageErrMap := make(map[string]error)
+
+	for i, client := range cli.PullClients {
+		wg.Add(1)
+
+		host := cli.PullHosts[i]
+
+		go func(client *docker.Client, host string) {
+			cmd := exec.Command("tar", "cvf", "-", "-C", imageRoot, ".")
+			cmd.Env = os.Environ()
+			cmd.Dir = imageRoot
+			defer cmd.Wait()
+
+			stdout, err := cmd.StdoutPipe()
+			if err != nil {
+				uploadImageErrMap[host] = err
+			}
+
+			if err := cmd.Start(); err != nil {
+				uploadImageErrMap[host] = err
+			}
+
+			fmt.Printf("Loading image to: %v\n", host)
+			client.LoadImage(docker.LoadImageOptions{InputStream: stdout})
+
+			wg.Done()
+
+		}(client, host)
 	}
 
-	if err := cmd.Start(); err != nil {
-		return err
+	wg.Wait()
+
+	if len(uploadImageErrMap) > 0 {
+		fmt.Printf("Errors uploading images: %v\n", uploadImageErrMap)
+		return fmt.Errorf("error uploading image")
+	} else {
+		fmt.Println("All uploads completed without error.")
 	}
 
-	cli.Client.LoadImage(docker.LoadImageOptions{InputStream: stdout})
+	return nil
+}
+
+type DownloadMap map[remote.ID][]string
+
+func (cli *DogestryCli) makeDownloadMap(r remote.Remote, id remote.ID, imageRoot string) (DownloadMap, error) {
+	var downloadMap = make(map[remote.ID][]string)
+	var err error
+
+	for i, pullHost := range cli.PullClients {
+		fmt.Printf("Connecting to remote docker host: %v\n", cli.PullHosts[i])
+
+		layers, err := cli.getLayerIdsToDownload(id, imageRoot, r, pullHost)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, layer := range layers {
+			downloadMap[layer] = append(downloadMap[layer], cli.PullHosts[i])
+		}
+	}
+	return downloadMap, err
+}
+
+func (cli *DogestryCli) downloadImages(r remote.Remote, downloadMap DownloadMap, imageRoot string) error {
+	var wg sync.WaitGroup
+
+	pullImagesErrMap := make(map[string]error)
+
+	for id, _ := range downloadMap {
+		wg.Add(1)
+
+		go func(imageRoot string, id remote.ID) {
+			downloadPath := filepath.Join(imageRoot, string(id))
+
+			fmt.Printf("Pulling image id '%s' to: %v\n", id.Short(), downloadPath)
+
+			err := r.PullImageId(id, downloadPath)
+			if err != nil {
+				pullImagesErrMap[string(id)] = err
+			}
+			wg.Done()
+		}(imageRoot, id)
+	}
+	wg.Wait()
+
+	if len(pullImagesErrMap) > 0 {
+		fmt.Printf("Errors pulling images: %v\n", pullImagesErrMap)
+		return fmt.Errorf("Error downloading files from S3")
+	}
 
 	return nil
 }

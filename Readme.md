@@ -41,6 +41,16 @@ And the s3 version:
 dogestry pull s3://ops-goodies/docker-repo/?region=us-west-2 hipache
 ```
 
+If you want to pull an image from S3 to multiple hosts, you can use the `-pullhosts` option.
+The value for the `-pullhosts` option is a comma-separated list of hosts, in the following
+format: `tcp://[host][:port]` or `unix://path`.
+
+The s3 version, with pullhosts:
+
+```
+dogestry -pullhosts tcp://host-1:2375,tcp://host-2:2375,tcp://host-3:2375 s3://ops-goodies/docker-repo/ hipache
+```
+
 ### config
 
 Configure dogestry with `dogestry.cfg`. By default it's looked for in `./dogestry.cfg`.
@@ -82,12 +92,12 @@ Dogestry push works by
 
 Dogestry pull works by
 * resolving the requested image name or id by querying the remote:
-  * it could be a mapping from a docker "repostitory:tag" pair to an id.
+  * it could be a mapping from a docker "repository:tag" pair to an id.
   * it could be the prefix of an image id which exists on the remote.
 * efficiently synchronise images from the remote.
-  * walk the ancetry of the requested image until we reach an image that the local docker already has.
+  * for each of the pull hosts, walk the ancestry of the requested image until we reach an image that the docker host already has.
   * download the required images.
-* preparing a tarball in the format needed by `docker load` and sending it to docker.
+* preparing a tarball in the format needed by `docker load` and sending it to each of the docker hosts.
 
 ## discussion
 
@@ -135,7 +145,7 @@ It centres around a common portable repository format.
 Using the new feature for de/serialising self-consistent image histories (`GET /images/<name>/get` and `POST /images/load`)
 
 * dogestry push - push images from local docker instance to the remote in the portable repo format
-* dogestry pull - pull images from the remote into the local docker instance
+* dogestry pull - pull images from the remote into either the local docker instance, or a list of pull hosts
 
 ### remotes
 
