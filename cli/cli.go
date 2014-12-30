@@ -146,6 +146,7 @@ Alternate registry and simple image storage for docker.
      export DOCKER_HOST=tcp://localhost:2375
      dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <image name>
      dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <image name>
+     dogestry -pullhosts tcp://host-1:2375,tcp://host-2:2375 pull s3://<bucket name>/<path name>/ <image name>
      dogestry -tempdir /tmp download s3://<bucket name>/<path name>/?region=us-east-1 <image name>
      dogestry upload <image dir> <image name>
   Commands:
