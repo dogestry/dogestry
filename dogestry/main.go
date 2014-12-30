@@ -10,13 +10,13 @@ import (
 	"strings"
 )
 
-type hosts []string
+type pullHosts []string
 
-func (h *hosts) String() string {
+func (h *pullHosts) String() string {
 	return fmt.Sprintf("%v", *h)
 }
 
-func (h *hosts) Set(value string) error {
+func (h *pullHosts) Set(value string) error {
 	for _, host := range strings.Split(value, ",") {
 		*h = append(*h, host)
 	}
@@ -25,12 +25,12 @@ func (h *hosts) Set(value string) error {
 
 var flConfigFile string
 var flTempDir string
-var flHosts hosts
+var flPullHosts pullHosts
 
 func init() {
 	flag.StringVar(&flConfigFile, "config", "", "the dogestry config file (defaults to 'dogestry.cfg' in the current directory). Config is optional - if using s3 you can use env vars or signed URLs.")
 	flag.StringVar(&flTempDir, "tempdir", "", "an alternate tempdir to use")
-	flag.Var(&flHosts, "hosts", "a comma-separated list of hosts")
+	flag.Var(&flPullHosts, "pullhosts", "a comma-separated list of docker hosts where the image will be pulled")
 }
 
 func main() {
@@ -45,7 +45,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dogestryCli, err := cli.NewDogestryCli(cfg, flHosts)
+	dogestryCli, err := cli.NewDogestryCli(cfg, flPullHosts)
 	if err != nil {
 		log.Fatal(err)
 	}
