@@ -38,24 +38,19 @@ dogestry -pullhosts tcp://host-1:2375,tcp://host-2:2375,tcp://host-3:2375 s3://o
 
 Typical S3 Usage:
 ```
-    export AWS_ACCESS_KEY=ABC
-    export AWS_SECRET_KEY=DEF
-    export DOCKER_HOST=tcp://localhost:2375
-    dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <image name>
-    dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <image name>
+export AWS_ACCESS_KEY=ABC
+export AWS_SECRET_KEY=DEF
+export DOCKER_HOST=tcp://localhost:2375
+dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <image name>
+dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <image name>
 ```
 
 
 ## Configuration
 
-Configure dogestry with `dogestry.cfg`. By default it's looked for in `./dogestry.cfg`.
+Dogestry can run without a configuration file, but it's there if you need it.
 
-Dogestry can often run without a configuration file, but it's there if you need it.
-
-For example, using the config file, you can set up remote aliases for convenience or specifiy s3 credentials.
-
-However, if you're bootstrapping a system, you might rely on IAM instance profiles for credentials and specify the
-remote using its full url.
+By default dogestry looks for config file in `./dogestry.cfg`.
 
 
 ## S3 files layout
