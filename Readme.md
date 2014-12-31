@@ -2,7 +2,7 @@
 
 # Dogestry
 
-Simple CLI app for storing image on Amazon S3.
+Simple CLI app for storing Docker image on Amazon S3.
 
 ## Prerequisites
 
