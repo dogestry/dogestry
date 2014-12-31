@@ -1,4 +1,4 @@
-<div style="float: right"><img src ="http://i.imgur.com/kmS86eG.png" /></div>
+<div align="right" width="100%"><img width="100%" src ="http://i.imgur.com/exoSZ6v.jpg" /></div>
 
 # Dogestry
 
