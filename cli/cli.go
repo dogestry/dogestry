@@ -332,7 +332,10 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 			}
 
 			fmt.Printf("Loading image to: %v\n", host)
-			client.LoadImage(docker.LoadImageOptions{InputStream: stdout})
+			err = client.LoadImage(docker.LoadImageOptions{InputStream: stdout})
+			if err != nil {
+				uploadImageErrMap[host] = err
+			}
 
 			wg.Done()
 
