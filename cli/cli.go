@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/dogestry/dogestry/config"
@@ -295,6 +296,41 @@ func (cli *DogestryCli) createRepositoriesJsonFile(image, imageRoot string, r re
 	return json.NewEncoder(reposFile).Encode(&repositories)
 }
 
+type Status struct {
+	Host   string
+	Status string
+	Error  string `json:",omitempty"`
+}
+
+// makeStatusJSON returns status JSON
+func (cli *DogestryCli) makeStatusJSON(errMap map[string]error) ([]byte, error) {
+	var statusMap = make([]Status, len(cli.PullHosts))
+	var status Status
+
+	for i, host := range cli.PullHosts {
+		status.Host = host
+
+		if val, ok := errMap[host]; ok {
+			status.Status = "failed"
+			status.Error = val.Error()
+		} else {
+			status.Status = "ok"
+		}
+
+		statusMap[i] = status
+	}
+	return json.Marshal(statusMap)
+}
+
+func (cli *DogestryCli) outputStatus(errMap map[string]error) error {
+	result, err := cli.makeStatusJSON(errMap)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(result[:]))
+	return nil
+}
+
 // sendTar streams exported tarball into remote docker hosts
 func (cli *DogestryCli) sendTar(imageRoot string) error {
 	notExist, err := utils.DirNotExistOrEmpty(imageRoot)
@@ -302,14 +338,16 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 	if err != nil {
 		return err
 	}
+
+	uploadImageErrMap := make(map[string]error)
+
 	if notExist {
 		fmt.Println("local directory is empty")
-		return nil
+		err = cli.outputStatus(uploadImageErrMap)
+		return err
 	}
 
 	var wg sync.WaitGroup
-
-	uploadImageErrMap := make(map[string]error)
 
 	for i, client := range cli.PullClients {
 		wg.Add(1)
@@ -344,14 +382,11 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 
 	wg.Wait()
 
+	err = cli.outputStatus(uploadImageErrMap)
 	if len(uploadImageErrMap) > 0 {
-		fmt.Printf("Errors uploading images: %v\n", uploadImageErrMap)
-		return fmt.Errorf("error uploading image")
-	} else {
-		fmt.Println("All uploads completed without error.")
+		err = errors.New("Error in sendTar")
 	}
-
-	return nil
+	return err
 }
 
 type DownloadMap map[remote.ID][]string
