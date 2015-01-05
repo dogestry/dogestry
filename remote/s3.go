@@ -121,7 +121,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 			for putFileArguments := range putFilesChan {
 				putFileErr := remote.putFile(putFileArguments.KeyDef.fullPath, &putFileArguments.KeyDef)
 
-				if (putFileErr != nil) && ((putFileErr != io.EOF) || (!strings.Contains(putFileErr.Error(), "EOF"))) {
+				if (putFileErr != nil) && ((putFileErr != io.EOF) && (!strings.Contains(putFileErr.Error(), "EOF"))) {
 					putFileErrMap[putFileArguments.Key] = putFileErr
 				}
 			}
