@@ -1,12 +1,15 @@
 package utils
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
 )
 
 var progressLogger = log.New(os.Stdout, "", 0)
+
+var defaultInterval int64 = 1024 * 1024 * 10 // 10 MB
 
 type progressReader struct {
 	r              io.Reader
@@ -18,11 +21,12 @@ type progressReader struct {
 }
 
 func NewProgressReader(r io.Reader, size int64, fileName string) io.Reader {
-	return &progressReader{r, size, 0, 0, 1024 * 512, fileName}
+	return &progressReader{r, size, 0, 0, defaultInterval, fileName}
 }
 
 func printProgress(progress, total int64, fileName string) {
-	progressLogger.Printf("%s: %s/%s\n", fileName, HumanSize(progress), HumanSize(total))
+	calc := fmt.Sprintf("%s/%s", HumanSize(progress), HumanSize(total))
+	progressLogger.Printf("  %-17s : %s\n", calc, fileName)
 }
 
 func (p *progressReader) Read(in []byte) (n int, err error) {
@@ -37,9 +41,9 @@ func (p *progressReader) Read(in []byte) (n int, err error) {
 	if err != nil {
 		printProgress(p.Current, p.TotalSize, p.FileName)
 		if err == io.EOF {
-			progressLogger.Printf("done\n")
+			progressLogger.Printf("  %-17s : %s\n", "DONE", p.FileName)
 		} else {
-			progressLogger.Printf("error: %s\n", err)
+			progressLogger.Printf("  %-17s: %s: %v\n", "ERROR", p.FileName, err)
 		}
 	}
 
