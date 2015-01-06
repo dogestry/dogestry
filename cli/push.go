@@ -44,7 +44,7 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 		return err
 	}
 
-	fmt.Println("pushing image to remote")
+	fmt.Println("Pushing image to remote")
 	if err := remote.Push(image, imageRoot); err != nil {
 		return err
 	}
