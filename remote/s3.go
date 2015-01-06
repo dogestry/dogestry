@@ -131,7 +131,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 	}
 
 	for key, localKey := range keysToPush {
-		fmt.Printf("pushing key %s (%s)\n", key, utils.FileHumanSize(localKey.fullPath))
+		fmt.Printf("Pushing key %s (%s)\n", key, utils.FileHumanSize(localKey.fullPath))
 
 		keyDefClone := *localKey
 
@@ -371,7 +371,7 @@ func (remote *S3Remote) localKeysNotInRemote(imageRoot string) (keys, error) {
 		return nil, err
 	}
 
-	fmt.Println("calculating local keys to push")
+	fmt.Println("Calculating local keys to push")
 	keysToPush := localKeys.NotIn(remoteKeys)
 
 	return keysToPush, err
@@ -452,7 +452,7 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
 
 // get a single file from the s3 bucket
 func (remote *S3Remote) getFile(dst string, key *keyDef) error {
-	fmt.Printf("pulling key %s (%s)\n", key.key, utils.HumanSize(key.s3Key.Size))
+	fmt.Printf("Pulling key %s (%s)\n", key.key, utils.HumanSize(key.s3Key.Size))
 
 	srcKey := remote.remoteKey(key.key)
 
