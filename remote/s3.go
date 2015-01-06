@@ -400,7 +400,7 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 		return err
 	}
 
-	progressReader := utils.NewProgressReader(f, finfo.Size(), os.Stdout)
+	progressReader := utils.NewProgressReader(f, finfo.Size(), src)
 
 	err = remote.getBucket().PutReader(dstKey, progressReader, finfo.Size(), "application/octet-stream", s3.Private, s3.Options{})
 	if err != nil {
@@ -473,7 +473,7 @@ func (remote *S3Remote) getFile(dst string, key *keyDef) error {
 	}
 
 	// TODO add progress reader
-	progressReaderFrom := utils.NewProgressReader(bufFrom, key.s3Key.Size, os.Stdout)
+	progressReaderFrom := utils.NewProgressReader(bufFrom, key.s3Key.Size, key.key)
 
 	_, err = io.Copy(to, progressReaderFrom)
 	if err != nil {
