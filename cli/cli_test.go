@@ -6,13 +6,15 @@ import (
 	"testing"
 )
 
+var hosts = make([]string, 0)
+
 func TestNewDogestryCli(t *testing.T) {
 	cfg, err := config.NewConfig("")
 	if err != nil {
 		t.Fatalf("Creating config struct should work. Error: %v", err)
 	}
 
-	dogestryCli, err := NewDogestryCli(cfg)
+	dogestryCli, err := NewDogestryCli(cfg, hosts)
 	if err != nil {
 		t.Fatalf("Creating dogestryCli struct should work. Error: %v", err)
 	}
@@ -24,7 +26,7 @@ func TestNewDogestryCli(t *testing.T) {
 
 func TestCreateAndReturnTempDirAndCleanup(t *testing.T) {
 	cfg, _ := config.NewConfig("")
-	dogestryCli, _ := NewDogestryCli(cfg)
+	dogestryCli, _ := NewDogestryCli(cfg, hosts)
 
 	tmpDir := dogestryCli.CreateAndReturnTempDir()
 	if tmpDir == "" {
