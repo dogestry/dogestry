@@ -361,18 +361,22 @@ func (remote *S3Remote) localKeys(root string) (keys, error) {
 func (remote *S3Remote) localKeysNotInRemote(imageRoot string) (keys, error) {
 	var err error
 
-	remoteKeys, err := remote.repoKeys("")
-	if err != nil {
-		return nil, err
-	}
+	keysToPush := make(keys)
 
 	localKeys, err := remote.localKeys(imageRoot)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("Calculating local keys to push")
-	keysToPush := localKeys.NotIn(remoteKeys)
+	bucket := remote.getBucket()
+
+	for key, kd := range localKeys {
+		if exists, err := bucket.Exists(key); err != nil {
+			return nil, err
+		} else if !exists {
+			keysToPush[key] = kd
+		}
+	}
 
 	return keysToPush, err
 }
