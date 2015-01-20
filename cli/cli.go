@@ -5,11 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/dogestry/dogestry/config"
-	"github.com/dogestry/dogestry/remote"
-	"github.com/dogestry/dogestry/utils"
-	docker "github.com/fsouza/go-dockerclient"
-	homedir "github.com/mitchellh/go-homedir"
 	"io"
 	"io/ioutil"
 	"log"
@@ -20,6 +15,12 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+
+	"github.com/dogestry/dogestry/config"
+	"github.com/dogestry/dogestry/remote"
+	"github.com/dogestry/dogestry/utils"
+	docker "github.com/fsouza/go-dockerclient"
+	homedir "github.com/mitchellh/go-homedir"
 )
 
 func newDockerClient(host string) (*docker.Client, error) {
