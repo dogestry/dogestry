@@ -430,22 +430,38 @@ func (cli *DogestryCli) downloadImages(r remote.Remote, downloadMap DownloadMap,
 
 	pullImagesErrMap := make(map[string]error)
 
+	type pathErrTuple struct {
+		path string
+		err  error
+	}
+
+	tupleCh := make(chan pathErrTuple)
+
 	for id, _ := range downloadMap {
 		wg.Add(1)
 
 		go func(imageRoot string, id remote.ID) {
+			defer wg.Done()
 			downloadPath := filepath.Join(imageRoot, string(id))
 
 			fmt.Printf("Pulling image id '%s' to: %v\n", id.Short(), downloadPath)
 
 			err := r.PullImageId(id, downloadPath)
 			if err != nil {
-				pullImagesErrMap[string(id)] = err
+				tupleCh <- pathErrTuple{downloadPath, err}
+				return
 			}
-			wg.Done()
 		}(imageRoot, id)
 	}
-	wg.Wait()
+
+	go func() {
+		wg.Wait()
+		close(tupleCh)
+	}()
+
+	for tuple := range tupleCh {
+		pullImagesErrMap[tuple.path] = tuple.err
+	}
 
 	if len(pullImagesErrMap) > 0 {
 		fmt.Printf("Errors pulling images: %v\n", pullImagesErrMap)
