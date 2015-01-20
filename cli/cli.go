@@ -341,12 +341,18 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 	}
 
 	uploadImageErrMap := make(map[string]error)
-
 	if notExist {
 		fmt.Println("local directory is empty")
 		err = cli.outputStatus(uploadImageErrMap)
 		return err
 	}
+
+	type hostErrTuple struct {
+		host string
+		err  error
+	}
+
+	tupleCh := make(chan hostErrTuple)
 
 	var wg sync.WaitGroup
 
@@ -356,6 +362,7 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 		host := cli.PullHosts[i]
 
 		go func(client *docker.Client, host string) {
+			defer wg.Done()
 			cmd := exec.Command("tar", "cvf", "-", "-C", imageRoot, ".")
 			cmd.Env = os.Environ()
 			cmd.Dir = imageRoot
@@ -363,25 +370,32 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 
 			stdout, err := cmd.StdoutPipe()
 			if err != nil {
-				uploadImageErrMap[host] = err
+				tupleCh <- hostErrTuple{host, err}
+				return
 			}
 
 			if err := cmd.Start(); err != nil {
-				uploadImageErrMap[host] = err
+				tupleCh <- hostErrTuple{host, err}
+				return
 			}
 
 			fmt.Printf("Loading image to: %v\n", host)
 			err = client.LoadImage(docker.LoadImageOptions{InputStream: stdout})
 			if err != nil {
-				uploadImageErrMap[host] = err
+				tupleCh <- hostErrTuple{host, err}
+				return
 			}
-
-			wg.Done()
-
 		}(client, host)
 	}
 
-	wg.Wait()
+	go func() {
+		wg.Wait()
+		close(tupleCh)
+	}()
+
+	for tuple := range tupleCh {
+		uploadImageErrMap[tuple.host] = tuple.err
+	}
 
 	err = cli.outputStatus(uploadImageErrMap)
 	if len(uploadImageErrMap) > 0 {
