@@ -5,11 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/dogestry/dogestry/config"
-	"github.com/dogestry/dogestry/remote"
-	"github.com/dogestry/dogestry/utils"
-	docker "github.com/fsouza/go-dockerclient"
-	homedir "github.com/mitchellh/go-homedir"
 	"io"
 	"io/ioutil"
 	"log"
@@ -20,6 +15,12 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+
+	"github.com/dogestry/dogestry/config"
+	"github.com/dogestry/dogestry/remote"
+	"github.com/dogestry/dogestry/utils"
+	docker "github.com/fsouza/go-dockerclient"
+	homedir "github.com/mitchellh/go-homedir"
 )
 
 func newDockerClient(host string) (*docker.Client, error) {
@@ -340,12 +341,18 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 	}
 
 	uploadImageErrMap := make(map[string]error)
-
 	if notExist {
 		fmt.Println("local directory is empty")
 		err = cli.outputStatus(uploadImageErrMap)
 		return err
 	}
+
+	type hostErrTuple struct {
+		host string
+		err  error
+	}
+
+	tupleCh := make(chan hostErrTuple)
 
 	var wg sync.WaitGroup
 
@@ -355,6 +362,7 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 		host := cli.PullHosts[i]
 
 		go func(client *docker.Client, host string) {
+			defer wg.Done()
 			cmd := exec.Command("tar", "cvf", "-", "-C", imageRoot, ".")
 			cmd.Env = os.Environ()
 			cmd.Dir = imageRoot
@@ -362,25 +370,32 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 
 			stdout, err := cmd.StdoutPipe()
 			if err != nil {
-				uploadImageErrMap[host] = err
+				tupleCh <- hostErrTuple{host, err}
+				return
 			}
 
 			if err := cmd.Start(); err != nil {
-				uploadImageErrMap[host] = err
+				tupleCh <- hostErrTuple{host, err}
+				return
 			}
 
 			fmt.Printf("Loading image to: %v\n", host)
 			err = client.LoadImage(docker.LoadImageOptions{InputStream: stdout})
 			if err != nil {
-				uploadImageErrMap[host] = err
+				tupleCh <- hostErrTuple{host, err}
+				return
 			}
-
-			wg.Done()
-
 		}(client, host)
 	}
 
-	wg.Wait()
+	go func() {
+		wg.Wait()
+		close(tupleCh)
+	}()
+
+	for tuple := range tupleCh {
+		uploadImageErrMap[tuple.host] = tuple.err
+	}
 
 	err = cli.outputStatus(uploadImageErrMap)
 	if len(uploadImageErrMap) > 0 {
@@ -415,22 +430,38 @@ func (cli *DogestryCli) downloadImages(r remote.Remote, downloadMap DownloadMap,
 
 	pullImagesErrMap := make(map[string]error)
 
+	type pathErrTuple struct {
+		path string
+		err  error
+	}
+
+	tupleCh := make(chan pathErrTuple)
+
 	for id, _ := range downloadMap {
 		wg.Add(1)
 
 		go func(imageRoot string, id remote.ID) {
+			defer wg.Done()
 			downloadPath := filepath.Join(imageRoot, string(id))
 
 			fmt.Printf("Pulling image id '%s' to: %v\n", id.Short(), downloadPath)
 
 			err := r.PullImageId(id, downloadPath)
 			if err != nil {
-				pullImagesErrMap[string(id)] = err
+				tupleCh <- pathErrTuple{downloadPath, err}
+				return
 			}
-			wg.Done()
 		}(imageRoot, id)
 	}
-	wg.Wait()
+
+	go func() {
+		wg.Wait()
+		close(tupleCh)
+	}()
+
+	for tuple := range tupleCh {
+		pullImagesErrMap[tuple.path] = tuple.err
+	}
 
 	if len(pullImagesErrMap) > 0 {
 		fmt.Printf("Errors pulling images: %v\n", pullImagesErrMap)

@@ -444,25 +444,39 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
 
 	getFilesErrMap := make(map[string]error)
 
+	type errTuple struct {
+		fileKey string
+		err     error
+	}
+
+	tupleCh := make(chan errTuple)
+
 	for _, key := range imageKeys {
 		wg.Add(1)
 
 		keyDefClone := *key
 
 		go func(dst, rootKey string, key keyDef) {
+			defer wg.Done()
 			relKey := strings.TrimPrefix(key.key, rootKey)
 			relKey = strings.TrimPrefix(relKey, "/")
 
 			err := remote.getFile(filepath.Join(dst, relKey), &key)
 			if err != nil {
-				getFilesErrMap[key.key] = err
+				tupleCh <- errTuple{key.key, err}
+				return
 			}
-
-			wg.Done()
-
 		}(dst, rootKey, keyDefClone)
 	}
-	wg.Wait()
+
+	go func() {
+		wg.Wait()
+		close(tupleCh)
+	}()
+
+	for tuple := range tupleCh {
+		getFilesErrMap[tuple.fileKey] = tuple.err
+	}
 
 	if len(getFilesErrMap) > 0 {
 		fmt.Printf("Errors during getFiles: %v\n", getFilesErrMap)
