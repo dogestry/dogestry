@@ -94,6 +94,18 @@ type putFileTuple struct {
 	KeyDef keyDef
 }
 
+func makeFilesChan(keysToPush keys) <-chan putFileTuple {
+	putFilesChan := make(chan putFileTuple, len(keysToPush))
+	go func() {
+		defer close(putFilesChan)
+		for key, localKey := range keysToPush {
+			keyDefClone := *localKey
+			putFilesChan <- putFileTuple{key, keyDefClone}
+		}
+	}()
+	return putFilesChan
+}
+
 func (remote *S3Remote) Push(image, imageRoot string) error {
 	var err error
 
@@ -107,8 +119,14 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 		return nil
 	}
 
+	type putFileResult struct {
+		host string
+		err  error
+	}
+
+	putFileErrChan := make(chan putFileResult)
 	putFileErrMap := make(map[string]error)
-	putFilesChan := make(chan putFileTuple, len(keysToPush))
+	putFilesChan := makeFilesChan(keysToPush)
 
 	numGoroutines := 100
 
@@ -118,28 +136,26 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 		wg.Add(1)
 
 		go func() {
-			for putFileArguments := range putFilesChan {
-				putFileErr := remote.putFile(putFileArguments.KeyDef.fullPath, &putFileArguments.KeyDef)
+			defer wg.Done()
+			for putFile := range putFilesChan {
+				fmt.Printf("  pushing key %s (%s)\n", putFile.Key, utils.FileHumanSize(putFile.KeyDef.fullPath))
+				putFileErr := remote.putFile(putFile.KeyDef.fullPath, &putFile.KeyDef)
 
 				if (putFileErr != nil) && ((putFileErr != io.EOF) && (!strings.Contains(putFileErr.Error(), "EOF"))) {
-					putFileErrMap[putFileArguments.Key] = putFileErr
+					putFileErrChan <- putFileResult{putFile.Key, putFileErr}
 				}
 			}
-
-			wg.Done()
 		}()
 	}
 
-	for key, localKey := range keysToPush {
-		fmt.Printf("Pushing key %s (%s)\n", key, utils.FileHumanSize(localKey.fullPath))
+	go func() {
+		wg.Wait()
+		close(putFileErrChan)
+	}()
 
-		keyDefClone := *localKey
-
-		putFilesChan <- putFileTuple{key, keyDefClone}
+	for p := range putFileErrChan {
+		putFileErrMap[p.host] = p.err
 	}
-
-	close(putFilesChan)
-	wg.Wait()
 
 	if len(putFileErrMap) > 0 {
 		fmt.Printf("Errors during Push: %v\n", putFileErrMap)
