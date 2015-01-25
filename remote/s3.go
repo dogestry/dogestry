@@ -109,13 +109,14 @@ func makeFilesChan(keysToPush keys) <-chan putFileTuple {
 func (remote *S3Remote) Push(image, imageRoot string) error {
 	var err error
 
+	fmt.Println("Checking keys on S3 remote")
 	keysToPush, err := remote.localKeysNotInRemote(imageRoot)
 	if err != nil {
 		return fmt.Errorf("error calculating keys to push: %v", err)
 	}
 
 	if len(keysToPush) == 0 {
-		fmt.Println("nothing to push")
+		fmt.Println("Nothing to push")
 		return nil
 	}
 
@@ -132,13 +133,13 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 
 	var wg sync.WaitGroup
 
+	fmt.Println("Pushing keys to S3 remote")
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
 
 		go func() {
 			defer wg.Done()
 			for putFile := range putFilesChan {
-				fmt.Printf("  pushing key %s (%s)\n", putFile.Key, utils.FileHumanSize(putFile.KeyDef.fullPath))
 				putFileErr := remote.putFile(putFile.KeyDef.fullPath, &putFile.KeyDef)
 
 				if (putFileErr != nil) && ((putFileErr != io.EOF) && (!strings.Contains(putFileErr.Error(), "EOF"))) {
@@ -389,18 +390,21 @@ func (remote *S3Remote) localKeysNotInRemote(imageRoot string) (keys, error) {
 	resultsc := make(chan string)
 
 	var wg sync.WaitGroup
-	for key, _ := range localKeys {
+	for key, def := range localKeys {
 		wg.Add(1)
-		go func(k string) {
+		go func(k string, path string) {
 			exists, err := bucket.Exists(k)
 			if err != nil {
 				exists = false
 			}
 			if !exists {
+				fmt.Printf("  not found: %v (%v)\n", k, utils.FileHumanSize(path))
 				resultsc <- k
+			} else {
+				fmt.Printf("  exists   : %v (%v)\n", k, utils.FileHumanSize(path))
 			}
 			wg.Done()
-		}(key)
+		}(key, def.fullPath)
 	}
 
 	go func() {
