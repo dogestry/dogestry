@@ -40,7 +40,8 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 
 	fmt.Printf("Remote: %v\n", remote.Desc())
 
-	if err := cli.exportImageToFiles(image, imageRoot); err != nil {
+	fmt.Println("Exporting files")
+	if err = cli.exportToFiles(image, remote, imageRoot); err != nil {
 		return err
 	}
 
@@ -161,5 +162,55 @@ func createRepositoriesJsonFile(root string, tarball io.Reader) error {
 		}
 	}
 
+	return nil
+}
+
+func (cli *DogestryCli) exportMetaDataToFiles(repoName string, repoTag string, id remote.ID, root string) error {
+	fmt.Printf("Exporting metadata for: %v to: %v\n", repoName, root)
+	dest := filepath.Join(root, "repositories", repoName, repoTag)
+
+	if err := os.MkdirAll(filepath.Dir(dest), os.ModeDir|0700); err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(dest, []byte(id), 0600); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cli *DogestryCli) exportToFiles(image string, r remote.Remote, imageRoot string) error {
+	imageHistory, err := cli.Client.ImageHistory(image)
+	if err != nil {
+		fmt.Printf("Error getting image history: %v\n", err)
+	}
+
+	imageID := remote.ID(imageHistory[0].ID)
+	repoName, repoTag := remote.NormaliseImageName(image)
+
+	// In theory, we could just check the "top layer" and assume that, if it exists, then
+	// that means all the parent layers are present. Instead, this checks all image layers,
+	// which is a little safer, but slower.
+	//
+	// As soon as one check fails, we can break out of the loop, since that means we will have
+	// to export the entire image.
+	for _, i := range imageHistory {
+		id := remote.ID(i.ID)
+		fmt.Printf("  checking id: %v\n", id)
+		_, err = r.ImageMetadata(id)
+		if err != nil {
+			break
+		}
+	}
+
+	if err == nil {
+		if err := cli.exportMetaDataToFiles(repoName, repoTag, imageID, imageRoot); err != nil {
+			return err
+		}
+	} else {
+		if err := cli.exportImageToFiles(image, imageRoot); err != nil {
+			return err
+		}
+	}
 	return nil
 }
