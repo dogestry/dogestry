@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 )
 
@@ -67,28 +66,4 @@ func Sha1File(path string) (string, error) {
 
 	io.Copy(hash, buff)
 	return hex.EncodeToString(hash.Sum(nil)), nil
-}
-
-func DirNotExistOrEmpty(path string) (bool, error) {
-	imagesDir, err := os.Open(path)
-	if err != nil {
-		// no images
-		if os.IsNotExist(err) {
-			return true, nil
-		} else {
-			return false, err
-		}
-	}
-	defer imagesDir.Close()
-
-	names, err := ioutil.ReadDir(path)
-	if err != nil {
-		return false, err
-	}
-
-	if len(names) <= 1 {
-		return true, nil
-	}
-
-	return false, nil
 }

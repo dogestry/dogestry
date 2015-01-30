@@ -18,7 +18,6 @@ import (
 
 	"github.com/dogestry/dogestry/config"
 	"github.com/dogestry/dogestry/remote"
-	"github.com/dogestry/dogestry/utils"
 	docker "github.com/fsouza/go-dockerclient"
 	homedir "github.com/mitchellh/go-homedir"
 )
@@ -334,19 +333,6 @@ func (cli *DogestryCli) outputStatus(errMap map[string]error) error {
 
 // sendTar streams exported tarball into remote docker hosts
 func (cli *DogestryCli) sendTar(imageRoot string) error {
-	notExist, err := utils.DirNotExistOrEmpty(imageRoot)
-
-	if err != nil {
-		return err
-	}
-
-	uploadImageErrMap := make(map[string]error)
-	if notExist {
-		fmt.Println("local directory is empty")
-		err = cli.outputStatus(uploadImageErrMap)
-		return err
-	}
-
 	type hostErrTuple struct {
 		host string
 		err  error
@@ -393,11 +379,12 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 		close(tupleCh)
 	}()
 
+	uploadImageErrMap := make(map[string]error)
 	for tuple := range tupleCh {
 		uploadImageErrMap[tuple.host] = tuple.err
 	}
 
-	err = cli.outputStatus(uploadImageErrMap)
+	err := cli.outputStatus(uploadImageErrMap)
 	if len(uploadImageErrMap) > 0 {
 		err = errors.New("Error in sendTar")
 	}
