@@ -27,6 +27,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 		return err
 	}
 
+	fmt.Printf("Using docker endpoints for pull: %v\n", cli.PullHosts)
 	fmt.Printf("S3 Connection: %v\n", r.Desc())
 
 	fmt.Printf("Image tag: %v\n", image)

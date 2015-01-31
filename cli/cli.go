@@ -88,8 +88,6 @@ func NewDogestryCli(cfg config.Config, hosts []string) (*DogestryCli, error) {
 		dogestryCli.PullClients = []*docker.Client{dogestryCli.Client}
 	}
 
-	fmt.Printf("Using docker endpoints for pull: %v\n", dogestryCli.PullHosts)
-
 	return dogestryCli, nil
 }
 
