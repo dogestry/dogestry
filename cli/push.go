@@ -38,6 +38,7 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 		return err
 	}
 
+	fmt.Printf("Using docker endpoint for push: %v\n", cli.DockerHost)
 	fmt.Printf("Remote: %v\n", remote.Desc())
 
 	fmt.Println("Exporting files")

@@ -74,8 +74,6 @@ func NewDogestryCli(cfg config.Config, hosts []string) (*DogestryCli, error) {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Using docker endpoint for push: %v\n", dogestryCli.DockerHost)
-
 	if len(dogestryCli.PullHosts) > 0 {
 		var client *docker.Client
 		for _, host := range dogestryCli.PullHosts {
