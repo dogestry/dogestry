@@ -2,7 +2,6 @@ package config
 
 import (
 	"code.google.com/p/gcfg"
-	"fmt"
 	"os"
 )
 
@@ -18,7 +17,6 @@ func NewConfig(configFilePath string) (config Config, err error) {
 		if _, err := os.Stat(DefaultConfigFilePath); !os.IsNotExist(err) {
 			configFilePath = DefaultConfigFilePath
 		} else {
-			fmt.Fprintln(os.Stdout, "Note: no config file found, using default config.")
 			return DefaultConfig, nil
 		}
 	}
