@@ -26,6 +26,11 @@ type RemoteConfig struct {
 	Url    url.URL
 }
 
+type Image struct {
+	Repository string
+	Tag        string
+}
+
 type ImageWalkFn func(id ID, image docker.Image, err error) error
 
 type Remote interface {
@@ -45,6 +50,9 @@ type Remote interface {
 
 	ImageMetadata(id ID) (docker.Image, error)
 
+	// return repo, tag from a file path (or S3 key)
+	ParseImagePath(path string, prefix string) (repo, tag string)
+
 	// walk the image history on the remote, starting at id
 	WalkImages(id ID, walker ImageWalkFn) error
 
@@ -53,6 +61,9 @@ type Remote interface {
 
 	// describe the remote
 	Desc() string
+
+	// List images on the remote
+	List() ([]Image, error)
 }
 
 func NewRemote(remoteName string, config config.Config) (remote Remote, err error) {
@@ -148,6 +159,14 @@ func ResolveImageNameToId(remote Remote, image string) (ID, error) {
 	}
 
 	return "", ErrNoSuchImage
+}
+
+func ParseImagePath(path string, prefix string) (repo, tag string) {
+	path = strings.TrimPrefix(path, prefix)
+	parts := strings.Split(path, "/")
+	repo = strings.Join(parts[:len(parts)-1], "/")
+	tag = parts[len(parts)-1]
+	return repo, tag
 }
 
 // Common implementation of walking a remote's images
