@@ -4,19 +4,7 @@ import (
 	"fmt"
 )
 
-func (cli *DogestryCli) CmdHelp(args ...string) error {
-	if len(args) > 0 {
-		method, exists := cli.getMethod(args[0])
-		if !exists {
-			fmt.Fprintf(cli.err, "Error: Command not found: %s\n", args[0])
-		} else {
-			method("--help")
-			return nil
-		}
-	}
-
-	help := fmt.Sprintf(
-		`Usage: dogestry [OPTIONS] COMMAND [arg...]
+const HelpMessage string = `Usage: dogestry [OPTIONS] COMMAND [arg...]
 
   Commands:
      help        Print help message. Use help COMMAND for more specific help
@@ -33,7 +21,19 @@ func (cli *DogestryCli) CmdHelp(args ...string) error {
      dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <image name>
      dogestry pull s3://<bucket name>/<path name>/?region=us-west-1 <image name>
      dogestry -pullhosts tcp://host-1:2375,tcp://host-2:2375 pull s3://<bucket name>/<path name>/ <image name>
-`)
-	fmt.Println(help)
+`
+
+func (cli *DogestryCli) CmdHelp(args ...string) error {
+	if len(args) > 0 {
+		method, exists := cli.getMethod(args[0])
+		if !exists {
+			fmt.Fprintf(cli.err, "Error: Command not found: %s\n", args[0])
+		} else {
+			method("--help")
+			return nil
+		}
+	}
+
+	fmt.Println(HelpMessage)
 	return nil
 }
