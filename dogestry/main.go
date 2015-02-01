@@ -24,12 +24,10 @@ func (h *pullHosts) Set(value string) error {
 }
 
 var flConfigFile string
-var flTempDir string
 var flPullHosts pullHosts
 
 func init() {
 	flag.StringVar(&flConfigFile, "config", "", "the dogestry config file (defaults to 'dogestry.cfg' in the current directory). Config is optional - if using s3 you can use env vars or signed URLs.")
-	flag.StringVar(&flTempDir, "tempdir", "", "an alternate tempdir to use")
 	flag.Var(&flPullHosts, "pullhosts", "a comma-separated list of docker hosts where the image will be pulled")
 }
 
@@ -50,19 +48,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dogestryCli.TempDirRoot = flTempDir
-	if dogestryCli.TempDirRoot == "" {
-		dogestryCli.TempDirRoot = cfg.Dogestry.Temp_Dir
-	}
-
 	err = dogestryCli.RunCmd(args...)
 
 	if err == nil {
-		if len(args) > 0 && args[0] == "download" {
-			fmt.Printf("%v\n", dogestryCli.TempDir)
-		} else {
-			dogestryCli.Cleanup()
-		}
+		dogestryCli.Cleanup()
 	} else {
 		dogestryCli.Cleanup()
 		log.Fatal(err)
