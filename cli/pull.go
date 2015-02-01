@@ -5,18 +5,27 @@ import (
 	"github.com/dogestry/dogestry/remote"
 )
 
+const PullHelpMessage string = `  Arguments:
+    REMOTE       Name of REMOTE.
+    IMAGE[:TAG]  Name of IMAGE. TAG is optional, and defaults to 'latest'.
+
+  Examples:
+    dogestry -pullhosts tcp://host-1:2375 pull s3://DockerBucket/Path/ ubuntu:14.04
+    dogestry pull /path/to/images ubuntu`
+
 func (cli *DogestryCli) CmdPull(args ...string) error {
-	cmd := cli.Subcmd("pull", "REMOTE IMAGE[:TAG]", "pull IMAGE from the REMOTE and load it into docker. TAG defaults to 'latest'")
-	if err := cmd.Parse(args); err != nil {
+	pullFlags := cli.Subcmd("pull", "REMOTE IMAGE[:TAG]", PullHelpMessage)
+	if err := pullFlags.Parse(args); err != nil {
 		return nil
 	}
 
-	if len(cmd.Args()) < 2 {
-		return fmt.Errorf("Error: REMOTE and IMAGE not specified")
+	if len(pullFlags.Args()) < 2 {
+		fmt.Println("Error: REMOTE and IMAGE not specified")
+		pullFlags.Usage()
 	}
 
-	remoteDef := cmd.Arg(0)
-	image := cmd.Arg(1)
+	remoteDef := pullFlags.Arg(0)
+	image := pullFlags.Arg(1)
 
 	imageRoot, err := cli.WorkDir(image)
 	if err != nil {
