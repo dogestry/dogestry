@@ -15,18 +15,27 @@ import (
 	"strings"
 )
 
+const PushHelpMessage string = `  Arguments:
+    REMOTE       Name of REMOTE.
+    IMAGE[:TAG]  Name of IMAGE. TAG is optional, and defaults to 'latest'.
+
+  Examples:
+    dogestry push s3://DockerBucket/Path/?region=us-east-1 ubuntu:14.04
+    dogestry push /path/to/images ubuntu`
+
 func (cli *DogestryCli) CmdPush(args ...string) error {
-	cmd := cli.Subcmd("push", "REMOTE IMAGE[:TAG]", "push IMAGE to the REMOTE. TAG defaults to 'latest'")
-	if err := cmd.Parse(args); err != nil {
+	pushFlags := cli.Subcmd("push", "REMOTE IMAGE[:TAG]", PushHelpMessage)
+	if err := pushFlags.Parse(args); err != nil {
 		return nil
 	}
 
-	if len(cmd.Args()) < 2 {
-		return fmt.Errorf("Error: IMAGE and REMOTE not specified")
+	if len(pushFlags.Args()) < 2 {
+		fmt.Println("Error: IMAGE and REMOTE not specified")
+		pushFlags.Usage()
 	}
 
-	remoteDef := cmd.Arg(0)
-	image := cmd.Arg(1)
+	remoteDef := pushFlags.Arg(0)
+	image := pushFlags.Arg(1)
 
 	imageRoot, err := cli.WorkDir(image)
 	if err != nil {

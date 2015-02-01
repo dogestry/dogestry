@@ -127,7 +127,6 @@ func (cli *DogestryCli) Subcmd(name, signature, description string) *flag.FlagSe
 	flags := flag.NewFlagSet(name, flag.ContinueOnError)
 	flags.Usage = func() {
 		fmt.Fprintf(cli.err, "\nUsage: dogestry %s %s\n\n%s\n\n", name, signature, description)
-		flags.PrintDefaults()
 		os.Exit(2)
 	}
 	return flags
