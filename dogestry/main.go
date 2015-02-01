@@ -23,11 +23,21 @@ func (h *pullHosts) Set(value string) error {
 	return nil
 }
 
-var flConfigFile string
-var flPullHosts pullHosts
+var (
+	flConfigFile string
+	flVersion    bool
+	flPullHosts  pullHosts
+)
 
 func init() {
+	const (
+		versionDefault = false
+		versionUsage   = "print version"
+	)
+
 	flag.StringVar(&flConfigFile, "config", "", "the dogestry config file (defaults to 'dogestry.cfg' in the current directory). Config is optional - if using s3 you can use env vars or signed URLs.")
+	flag.BoolVar(&flVersion, "version", versionDefault, versionUsage)
+	flag.BoolVar(&flVersion, "v", versionDefault, versionUsage+" (short)")
 	flag.Var(&flPullHosts, "pullhosts", "a comma-separated list of docker hosts where the image will be pulled")
 }
 
@@ -35,6 +45,14 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	flag.Parse()
+
+	if flVersion {
+		err := cli.PrintVersion()
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 
 	args := flag.Args()
 
