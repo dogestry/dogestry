@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/dogestry/dogestry/remote"
 )
 
@@ -19,7 +21,8 @@ func (cli *DogestryCli) CmdRemote(args ...string) error {
 	}
 
 	if len(remoteFlags.Args()) < 1 {
-		return fmt.Errorf("Error: REMOTE not specified")
+		fmt.Fprintln(os.Stderr, "Error: REMOTE not specified")
+		remoteFlags.Usage()
 	}
 
 	remoteDef := remoteFlags.Arg(0)

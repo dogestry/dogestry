@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/dogestry/dogestry/remote"
 )
 
@@ -20,7 +22,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 	}
 
 	if len(pullFlags.Args()) < 2 {
-		fmt.Println("Error: REMOTE and IMAGE not specified")
+		fmt.Fprintln(os.Stderr, "Error: REMOTE and IMAGE not specified")
 		pullFlags.Usage()
 	}
 
