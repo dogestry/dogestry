@@ -110,7 +110,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 	var err error
 
 	fmt.Println("Checking keys on S3 remote")
-	keysToPush, err := remote.localKeysNotInRemote(imageRoot)
+	keysToPush, err := remote.localKeysToPush(imageRoot)
 	if err != nil {
 		return fmt.Errorf("error calculating keys to push: %v", err)
 	}
@@ -375,7 +375,10 @@ func (remote *S3Remote) localKeys(root string) (keys, error) {
 	return localKeys, nil
 }
 
-func (remote *S3Remote) localKeysNotInRemote(imageRoot string) (keys, error) {
+// localKeysToPush checks each file in imageRoot to see if it already exists
+// in S3, or if it needs to be updated because its contents may have changed.
+// It returns a list of keys to push to S3.
+func (remote *S3Remote) localKeysToPush(imageRoot string) (keys, error) {
 	var err error
 
 	keysToPush := make(keys)
