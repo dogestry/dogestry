@@ -400,6 +400,9 @@ func (remote *S3Remote) localKeysNotInRemote(imageRoot string) (keys, error) {
 			if !exists {
 				fmt.Printf("  not found: %v (%v)\n", k, utils.FileHumanSize(path))
 				resultsc <- k
+			} else if strings.HasPrefix(k, "repositories/") {
+				fmt.Printf("  stale    : %v (%v)\n", k, utils.FileHumanSize(path))
+				resultsc <- k
 			} else {
 				fmt.Printf("  exists   : %v (%v)\n", k, utils.FileHumanSize(path))
 			}
