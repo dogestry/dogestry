@@ -7,7 +7,9 @@ import (
 	"github.com/dogestry/dogestry/remote"
 )
 
-const PullHelpMessage string = `  Arguments:
+const PullHelpMessage string = `  Pull IMAGE from REMOTE and load it into docker.
+
+  Arguments:
     REMOTE       Name of REMOTE.
     IMAGE[:TAG]  Name of IMAGE. TAG is optional, and defaults to 'latest'.
 

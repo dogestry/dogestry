@@ -15,7 +15,9 @@ import (
 	"strings"
 )
 
-const PushHelpMessage string = `  Arguments:
+const PushHelpMessage string = `  Push IMAGE from docker to REMOTE.
+
+   Arguments:
     REMOTE       Name of REMOTE.
     IMAGE[:TAG]  Name of IMAGE. TAG is optional, and defaults to 'latest'.
 

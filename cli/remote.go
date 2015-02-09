@@ -7,7 +7,9 @@ import (
 	"github.com/dogestry/dogestry/remote"
 )
 
-const RemoteHelpMessage string = `  Arguments:
+const RemoteHelpMessage string = `  Show info about REMOTE.
+
+  Arguments:
     REMOTE       Name of REMOTE.
 
   Examples:
