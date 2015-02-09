@@ -24,7 +24,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 	}
 
 	if len(pullFlags.Args()) < 2 {
-		fmt.Fprintln(os.Stderr, "Error: REMOTE and IMAGE not specified")
+		fmt.Fprintln(cli.err, "Error: REMOTE and IMAGE not specified")
 		pullFlags.Usage()
 		os.Exit(2)
 	}
