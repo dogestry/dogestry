@@ -42,8 +42,6 @@ func init() {
 }
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-
 	flag.Parse()
 
 	if flVersion {
