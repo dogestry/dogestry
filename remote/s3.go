@@ -129,7 +129,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 	putFileErrMap := make(map[string]error)
 	putFilesChan := makeFilesChan(keysToPush)
 
-	numGoroutines := 100
+	numGoroutines := 5
 
 	var wg sync.WaitGroup
 
