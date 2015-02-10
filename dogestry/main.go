@@ -6,7 +6,6 @@ import (
 	"github.com/dogestry/dogestry/cli"
 	"github.com/dogestry/dogestry/config"
 	"log"
-	"runtime"
 	"strings"
 )
 
