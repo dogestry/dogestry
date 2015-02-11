@@ -74,8 +74,6 @@ func NewDogestryCli(cfg config.Config, hosts []string) (*DogestryCli, error) {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Using docker endpoint for push: %v\n", dogestryCli.DockerHost)
-
 	if len(dogestryCli.PullHosts) > 0 {
 		var client *docker.Client
 		for _, host := range dogestryCli.PullHosts {
@@ -89,8 +87,6 @@ func NewDogestryCli(cfg config.Config, hosts []string) (*DogestryCli, error) {
 		dogestryCli.PullHosts = []string{dogestryCli.DockerHost}
 		dogestryCli.PullClients = []*docker.Client{dogestryCli.Client}
 	}
-
-	fmt.Printf("Using docker endpoints for pull: %v\n", dogestryCli.PullHosts)
 
 	return dogestryCli, nil
 }
@@ -127,42 +123,10 @@ func (cli *DogestryCli) RunCmd(args ...string) error {
 	return cli.CmdHelp(args...)
 }
 
-func (cli *DogestryCli) CmdHelp(args ...string) error {
-	if len(args) > 0 {
-		method, exists := cli.getMethod(args[0])
-		if !exists {
-			fmt.Fprintf(cli.err, "Error: Command not found: %s\n", args[0])
-		} else {
-			method("--help")
-			return nil
-		}
-	}
-
-	help := fmt.Sprintf(
-		`Usage: dogestry [OPTIONS] COMMAND [arg...]
-Alternate registry and simple image storage for docker.
-  Typical S3 Usage:
-     export AWS_ACCESS_KEY=ABC
-     export AWS_SECRET_KEY=DEF
-     export DOCKER_HOST=tcp://localhost:2375
-     dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <image name>
-     dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <image name>
-     dogestry -pullhosts tcp://host-1:2375,tcp://host-2:2375 pull s3://<bucket name>/<path name>/ <image name>
-  Commands:
-	 pull     - Pull IMAGE from S3 and load it into docker. TAG defaults to 'latest'
-	 push     - Push IMAGE to S3. TAG defaults to 'latest'
-	 remote   - Check a remote
-`)
-	fmt.Println(help)
-	return nil
-}
-
 func (cli *DogestryCli) Subcmd(name, signature, description string) *flag.FlagSet {
 	flags := flag.NewFlagSet(name, flag.ContinueOnError)
 	flags.Usage = func() {
 		fmt.Fprintf(cli.err, "\nUsage: dogestry %s %s\n\n%s\n\n", name, signature, description)
-		flags.PrintDefaults()
-		os.Exit(2)
 	}
 	return flags
 }

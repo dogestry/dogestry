@@ -6,6 +6,7 @@ import (
 	"github.com/dogestry/dogestry/cli"
 	"github.com/dogestry/dogestry/config"
 	"log"
+	"os"
 	"runtime"
 	"strings"
 )
@@ -43,6 +44,10 @@ func init() {
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	flag.Usage = func() {
+		fmt.Fprintln(os.Stderr, cli.HelpMessage)
+	}
 
 	flag.Parse()
 
