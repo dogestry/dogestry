@@ -1,0 +1,67 @@
+{
+	"ImportPath": "github.com/dogestry/dogestry/dogestry",
+	"GoVersion": "go1.4",
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/gcfg",
+			"Rev": "c2d3050044d05357eaf6c3547249ba57c5e235cb"
+		},
+		{
+			"ImportPath": "github.com/Sirupsen/logrus",
+			"Comment": "v0.6.2-15-gd2f9ffa",
+			"Rev": "d2f9ffa1d9cf25b25191b221229effac1b6de526"
+		},
+		{
+			"ImportPath": "github.com/crowdmob/goamz/aws",
+			"Rev": "cd22d9897beff6f3de22cec4bdb7d46b9e2dee67"
+		},
+		{
+			"ImportPath": "github.com/crowdmob/goamz/s3",
+			"Rev": "cd22d9897beff6f3de22cec4bdb7d46b9e2dee67"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/archive",
+			"Comment": "v1.4.1-228-gd7f7218",
+			"Rev": "d7f72188ffe3cf98481292d780da463b7de05e58"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/fileutils",
+			"Comment": "v1.4.1-228-gd7f7218",
+			"Rev": "d7f72188ffe3cf98481292d780da463b7de05e58"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/ioutils",
+			"Comment": "v1.4.1-228-gd7f7218",
+			"Rev": "d7f72188ffe3cf98481292d780da463b7de05e58"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/pools",
+			"Comment": "v1.4.1-228-gd7f7218",
+			"Rev": "d7f72188ffe3cf98481292d780da463b7de05e58"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/promise",
+			"Comment": "v1.4.1-228-gd7f7218",
+			"Rev": "d7f72188ffe3cf98481292d780da463b7de05e58"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/system",
+			"Comment": "v1.4.1-228-gd7f7218",
+			"Rev": "d7f72188ffe3cf98481292d780da463b7de05e58"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar",
+			"Comment": "v1.4.1-228-gd7f7218",
+			"Rev": "d7f72188ffe3cf98481292d780da463b7de05e58"
+		},
+		{
+			"ImportPath": "github.com/fsouza/go-dockerclient",
+			"Comment": "0.2.1-337-gb523834",
+			"Rev": "b52383442df766febf51f9f858ee311f69a2f264"
+		},
+		{
+			"ImportPath": "github.com/mitchellh/go-homedir",
+			"Rev": "7d2d8c8a4e078ce3c58736ab521a40b37a504c52"
+		}
+	]
+}
