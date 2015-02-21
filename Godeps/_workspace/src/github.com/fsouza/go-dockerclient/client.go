@@ -174,9 +174,14 @@ func NewVersionedClient(endpoint string, apiVersionString string) (*Client, erro
 	}, nil
 }
 
-// NewVersionnedTLSClient returns a Client instance ready for TLS communications with the givens
-// server endpoint, key and certificates, using a specific remote API version.
+// NewVersionnedTLSClient has been DEPRECATED, please use NewVersionedTLSClient.
 func NewVersionnedTLSClient(endpoint string, cert, key, ca, apiVersionString string) (*Client, error) {
+	return NewVersionedTLSClient(endpoint, cert, key, ca, apiVersionString)
+}
+
+// NewVersionedTLSClient returns a Client instance ready for TLS communications with the givens
+// server endpoint, key and certificates, using a specific remote API version.
+func NewVersionedTLSClient(endpoint string, cert, key, ca, apiVersionString string) (*Client, error) {
 	u, err := parseEndpoint(endpoint)
 	if err != nil {
 		return nil, err
@@ -460,24 +465,34 @@ func (c *Client) hijack(method, path string, success chan struct{}, setRawTermin
 		protocol = "tcp"
 		address = c.endpointURL.Host
 	}
-	dial, err := net.Dial(protocol, address)
-	if err != nil {
-		return err
+	var dial net.Conn
+	if c.TLSConfig != nil && protocol != "unix" {
+		dial, err = tlsDial(protocol, address, c.TLSConfig)
+		if err != nil {
+			return err
+		}
+	} else {
+		dial, err = net.Dial(protocol, address)
+		if err != nil {
+			return err
+		}
 	}
-	defer dial.Close()
 	clientconn := httputil.NewClientConn(dial, nil)
+	defer clientconn.Close()
 	clientconn.Do(req)
 	if success != nil {
 		success <- struct{}{}
 		<-success
 	}
 	rwc, br := clientconn.Hijack()
+	defer rwc.Close()
 	errs := make(chan error, 2)
 	exit := make(chan bool)
 	go func() {
 		defer close(exit)
 		var err error
 		if setRawTerminal {
+			// When TTY is ON, use regular copy
 			_, err = io.Copy(stdout, br)
 		} else {
 			_, err = stdCopy(stdout, stderr, br)
