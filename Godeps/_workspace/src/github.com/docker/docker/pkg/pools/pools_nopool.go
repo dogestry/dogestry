@@ -6,7 +6,7 @@ import (
 	"bufio"
 	"io"
 
-	"github.com/docker/docker/pkg/ioutils"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/docker/docker/pkg/ioutils"
 )
 
 var (

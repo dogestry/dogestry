@@ -1,7 +1,7 @@
 package config
 
 import (
-	"code.google.com/p/gcfg"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/code.google.com/p/gcfg"
 	"os"
 )
 

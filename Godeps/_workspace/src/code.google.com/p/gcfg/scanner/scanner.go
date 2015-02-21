@@ -19,7 +19,7 @@ import (
 )
 
 import (
-	"code.google.com/p/gcfg/token"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/code.google.com/p/gcfg/token"
 )
 
 // An ErrorHandler may be provided to Scanner.Init. If a syntax error is

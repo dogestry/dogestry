@@ -11,7 +11,7 @@ import (
 )
 
 import (
-	"code.google.com/p/gcfg/token"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/code.google.com/p/gcfg/token"
 )
 
 // In an ErrorList, an error is represented by an *Error.

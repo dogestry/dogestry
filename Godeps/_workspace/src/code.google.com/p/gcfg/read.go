@@ -9,8 +9,8 @@ import (
 )
 
 import (
-	"code.google.com/p/gcfg/scanner"
-	"code.google.com/p/gcfg/token"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/code.google.com/p/gcfg/scanner"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/code.google.com/p/gcfg/token"
 )
 
 var unescape = map[rune]rune{'\\': '\\', '"': '"', 'n': '\n', 't': '\t'}

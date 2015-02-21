@@ -16,13 +16,12 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/docker/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar"
-
-	log "github.com/Sirupsen/logrus"
-	"github.com/docker/docker/pkg/fileutils"
-	"github.com/docker/docker/pkg/pools"
-	"github.com/docker/docker/pkg/promise"
-	"github.com/docker/docker/pkg/system"
+	log "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/Sirupsen/logrus"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/docker/docker/pkg/fileutils"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/docker/docker/pkg/pools"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/docker/docker/pkg/promise"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/docker/docker/pkg/system"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/docker/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar"
 )
 
 type (

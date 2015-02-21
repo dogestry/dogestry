@@ -3,7 +3,7 @@ package archive
 import (
 	"testing"
 
-	"github.com/docker/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/docker/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar"
 )
 
 func TestApplyLayerInvalidFilenames(t *testing.T) {

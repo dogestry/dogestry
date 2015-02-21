@@ -2,8 +2,8 @@ package s3_test
 
 import (
 	"encoding/xml"
-	"github.com/crowdmob/goamz/s3"
-	"gopkg.in/check.v1"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/s3"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/gopkg.in/check.v1"
 	"io"
 	"io/ioutil"
 	"strings"

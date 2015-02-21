@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/fsouza/go-dockerclient"
 	"github.com/gorilla/mux"
 )
 

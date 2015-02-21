@@ -4,7 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/base64"
-	"github.com/crowdmob/goamz/aws"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/aws"
 	"log"
 	"sort"
 	"strings"

@@ -1,8 +1,8 @@
 package aws_test
 
 import (
-	"github.com/crowdmob/goamz/aws"
-	"gopkg.in/check.v1"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/aws"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/gopkg.in/check.v1"
 	"io/ioutil"
 	"os"
 	"strings"
