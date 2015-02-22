@@ -1,10 +1,9 @@
 package remote
 
 import (
-	docker "github.com/fsouza/go-dockerclient"
-
 	"encoding/json"
 	"fmt"
+	docker "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/fsouza/go-dockerclient"
 	"io/ioutil"
 	"log"
 	"net/url"

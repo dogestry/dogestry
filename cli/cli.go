@@ -16,10 +16,10 @@ import (
 	"strings"
 	"sync"
 
+	docker "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/fsouza/go-dockerclient"
+	homedir "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/mitchellh/go-homedir"
 	"github.com/dogestry/dogestry/config"
 	"github.com/dogestry/dogestry/remote"
-	docker "github.com/fsouza/go-dockerclient"
-	homedir "github.com/mitchellh/go-homedir"
 )
 
 func newDockerClient(host string) (*docker.Client, error) {

@@ -1,16 +1,15 @@
 package remote
 
 import (
-	"github.com/crowdmob/goamz/aws"
-	"github.com/crowdmob/goamz/s3"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/aws"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/s3"
 	"github.com/dogestry/dogestry/utils"
 
 	"bufio"
 	"encoding/json"
 
-	docker "github.com/fsouza/go-dockerclient"
-
 	"fmt"
+	docker "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/fsouza/go-dockerclient"
 	"path"
 	"path/filepath"
 	"strings"

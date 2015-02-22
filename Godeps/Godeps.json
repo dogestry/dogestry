@@ -1,0 +1,78 @@
+{
+	"ImportPath": "github.com/dogestry/dogestry",
+	"GoVersion": "go1.4.2",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/gcfg",
+			"Rev": "c2d3050044d05357eaf6c3547249ba57c5e235cb"
+		},
+		{
+			"ImportPath": "github.com/Sirupsen/logrus",
+			"Comment": "v0.6.4-21-g6dcec6e",
+			"Rev": "6dcec6ed3bdf8559ac1696bc32d7dbd9aadaf5b6"
+		},
+		{
+			"ImportPath": "github.com/crowdmob/goamz/aws",
+			"Rev": "3a06871fe9fc0281ca90f3a7d97258d042ed64c0"
+		},
+		{
+			"ImportPath": "github.com/crowdmob/goamz/s3",
+			"Rev": "3a06871fe9fc0281ca90f3a7d97258d042ed64c0"
+		},
+		{
+			"ImportPath": "github.com/crowdmob/goamz/testutil",
+			"Rev": "3a06871fe9fc0281ca90f3a7d97258d042ed64c0"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/archive",
+			"Comment": "v1.4.1-1213-gf207dd5",
+			"Rev": "f207dd5e7c3a99b1f26014a575197e8b9cc41ed8"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/fileutils",
+			"Comment": "v1.4.1-1213-gf207dd5",
+			"Rev": "f207dd5e7c3a99b1f26014a575197e8b9cc41ed8"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/ioutils",
+			"Comment": "v1.4.1-1213-gf207dd5",
+			"Rev": "f207dd5e7c3a99b1f26014a575197e8b9cc41ed8"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/pools",
+			"Comment": "v1.4.1-1213-gf207dd5",
+			"Rev": "f207dd5e7c3a99b1f26014a575197e8b9cc41ed8"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/promise",
+			"Comment": "v1.4.1-1213-gf207dd5",
+			"Rev": "f207dd5e7c3a99b1f26014a575197e8b9cc41ed8"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/system",
+			"Comment": "v1.4.1-1213-gf207dd5",
+			"Rev": "f207dd5e7c3a99b1f26014a575197e8b9cc41ed8"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar",
+			"Comment": "v1.4.1-1213-gf207dd5",
+			"Rev": "f207dd5e7c3a99b1f26014a575197e8b9cc41ed8"
+		},
+		{
+			"ImportPath": "github.com/fsouza/go-dockerclient",
+			"Comment": "0.2.1-378-g59b423d",
+			"Rev": "59b423db81e5894ca7460652f1b206fc72d85750"
+		},
+		{
+			"ImportPath": "github.com/mitchellh/go-homedir",
+			"Rev": "7d2d8c8a4e078ce3c58736ab521a40b37a504c52"
+		},
+		{
+			"ImportPath": "gopkg.in/check.v1",
+			"Rev": "64131543e7896d5bcc6bd5a76287eb75ea96c673"
+		}
+	]
+}
