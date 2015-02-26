@@ -110,6 +110,10 @@ func (remote *LocalRemote) ImageMetadata(id ID) (docker.Image, error) {
 	return image, nil
 }
 
+func (remote *LocalRemote) ParseImagePath(path string, prefix string) (repo, tag string) {
+	return ParseImagePath(path, prefix)
+}
+
 func (remote *LocalRemote) rsyncTo(src, dst string) error {
 	return remote.rsync(src+"/", remote.RemotePath(dst)+"/")
 }
@@ -134,4 +138,35 @@ func (remote *LocalRemote) imagePath(id ID) string {
 
 func (remote *LocalRemote) RemotePath(part ...string) string {
 	return filepath.Join(remote.Path, filepath.Join(part...))
+}
+
+func (remote *LocalRemote) List() (images []Image, err error) {
+	imagesRoot := filepath.Join(filepath.Clean(remote.Url.Path), "repositories")
+	_, err = os.Open(imagesRoot)
+	if err != nil {
+		return images, err
+	}
+
+	pathList := []string{}
+	err = filepath.Walk(imagesRoot, func(path string, info os.FileInfo, _ error) error {
+		if !info.IsDir() {
+			pathList = append(pathList, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return images, err
+	}
+
+	for _, path := range pathList {
+		repo, tag := remote.ParseImagePath(path, imagesRoot+"/")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error splitting repository key\n")
+			return images, err
+		}
+		image := Image{repo, tag}
+		images = append(images, image)
+	}
+
+	return images, nil
 }

@@ -233,6 +233,10 @@ func (remote *S3Remote) ImageMetadata(id ID) (docker.Image, error) {
 	return image, nil
 }
 
+func (remote *S3Remote) ParseImagePath(path string, prefix string) (repo, tag string) {
+	return ParseImagePath(path, prefix)
+}
+
 // get the configured bucket
 func (remote *S3Remote) getBucket() *s3.Bucket {
 	// memoise?
@@ -558,4 +562,44 @@ func (remote *S3Remote) imagePath(id ID) string {
 
 func (remote *S3Remote) remoteKey(key string) string {
 	return key
+}
+
+func (remote *S3Remote) List() (images []Image, err error) {
+
+	bucket := remote.getBucket()
+	nextMarker := ""
+
+	var contents []s3.Key
+
+	for true {
+		resp, err := bucket.List("repositories/", "", nextMarker, 1000)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s unable to list images: %s", remote.Desc(), err)
+			return images, err
+		}
+
+		contents = append(contents, resp.Contents...)
+
+		if resp.IsTruncated {
+			nextMarker = resp.NextMarker
+		} else {
+			break
+		}
+	}
+
+	for _, k := range contents {
+		if strings.HasSuffix(k.Key, ".sum") {
+			continue
+		}
+		repo, tag := remote.ParseImagePath(k.Key, "repositories/")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error splitting repository key")
+			return images, err
+		}
+
+		image := Image{repo, tag}
+		images = append(images, image)
+	}
+
+	return images, nil
 }
