@@ -67,7 +67,7 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 
 // Stream the tarball from docker and translate it into the portable repo format
 // Note that its easier to handle as a stream on the way out.
-func (cli *DogestryCli) exportImageToFiles(image, root string) error {
+func (cli *DogestryCli) exportImageToFiles(image, root string, saveIds map[remote.ID]struct{}) error {
 	fmt.Printf("Exporting image: %v to: %v\n", image, root)
 
 	reader, writer := io.Pipe()
@@ -92,9 +92,21 @@ func (cli *DogestryCli) exportImageToFiles(image, root string) error {
 				return
 			}
 
-			if err := cli.createFileFromTar(root, header, tarball); err != nil {
-				errch <- err
-				return
+			parts := strings.Split(header.Name, "/")
+			idFromFile := remote.ID(parts[0])
+
+			if _, ok := saveIds[idFromFile]; ok {
+				if err := cli.createFileFromTar(root, header, tarball); err != nil {
+					errch <- err
+					return
+				}
+			} else {
+				// Drain the reader. Is this necessary?
+				if _, err := io.Copy(ioutil.Discard, tarball); err != nil {
+					errch <- err
+					return
+				}
+
 			}
 		}
 
@@ -200,27 +212,30 @@ func (cli *DogestryCli) exportToFiles(image string, r remote.Remote, imageRoot s
 	imageID := remote.ID(imageHistory[0].ID)
 	repoName, repoTag := remote.NormaliseImageName(image)
 
-	// In theory, we could just check the "top layer" and assume that, if it exists, then
-	// that means all the parent layers are present. Instead, this checks all image layers,
-	// which is a little safer, but slower.
-	//
-	// As soon as one check fails, we can break out of the loop, since that means we will have
-	// to export the entire image.
+	// Check the remote to see what layers are missing. Only missing Ids will
+	// need to be saved to disk when exporting the docker image.
+
+	// There's no Set data structure in Go, so use a map with an empty struct
+	// as the value to simulate one.
+	var empty struct{}
+	missingIds := make(map[remote.ID]struct{})
+
 	for _, i := range imageHistory {
 		id := remote.ID(i.ID)
 		fmt.Printf("  checking id: %v\n", id)
 		_, err = r.ImageMetadata(id)
 		if err != nil {
-			break
+			fmt.Printf("    not found: %v\n", id)
+			missingIds[id] = empty
 		}
 	}
 
-	if err == nil {
+	if len(missingIds) == 0 {
 		if err := cli.exportMetaDataToFiles(repoName, repoTag, imageID, imageRoot); err != nil {
 			return err
 		}
 	} else {
-		if err := cli.exportImageToFiles(image, imageRoot); err != nil {
+		if err := cli.exportImageToFiles(image, imageRoot, missingIds); err != nil {
 			return err
 		}
 	}
