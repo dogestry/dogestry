@@ -63,9 +63,15 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 	return nil
 }
 
+// There's no Set data structure in Go, so use a map to simulate one.
+type set map[remote.ID]struct{}
+
+// We don't use the value in a set, so it's always empty.
+var empty struct{}
+
 // Stream the tarball from docker and translate it into the portable repo format
 // Note that its easier to handle as a stream on the way out.
-func (cli *DogestryCli) exportImageToFiles(image, root string, saveIds map[remote.ID]struct{}) error {
+func (cli *DogestryCli) exportImageToFiles(image, root string, saveIds set) error {
 	fmt.Printf("Exporting image: %v to: %v\n", image, root)
 
 	reader, writer := io.Pipe()
@@ -215,10 +221,7 @@ func (cli *DogestryCli) exportToFiles(image string, r remote.Remote, imageRoot s
 	// Check the remote to see what layers are missing. Only missing Ids will
 	// need to be saved to disk when exporting the docker image.
 
-	// There's no Set data structure in Go, so use a map with an empty struct
-	// as the value to simulate one.
-	var empty struct{}
-	missingIds := make(map[remote.ID]struct{})
+	missingIds := make(set)
 
 	for _, i := range imageHistory {
 		id := remote.ID(i.ID)
