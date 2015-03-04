@@ -52,12 +52,10 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 	fmt.Printf("Using docker endpoint for push: %v\n", cli.DockerHost)
 	fmt.Printf("Remote: %v\n", remote.Desc())
 
-	fmt.Println("Exporting files")
 	if err = cli.exportToFiles(image, remote, imageRoot); err != nil {
 		return err
 	}
 
-	fmt.Println("Pushing image to remote")
 	if err := remote.Push(image, imageRoot); err != nil {
 		return err
 	}
@@ -209,6 +207,8 @@ func (cli *DogestryCli) exportToFiles(image string, r remote.Remote, imageRoot s
 		fmt.Printf("Error getting image history: %v\n", err)
 	}
 
+	fmt.Println("Checking layers on remote")
+
 	imageID := remote.ID(imageHistory[0].ID)
 	repoName, repoTag := remote.NormaliseImageName(image)
 
@@ -222,10 +222,11 @@ func (cli *DogestryCli) exportToFiles(image string, r remote.Remote, imageRoot s
 
 	for _, i := range imageHistory {
 		id := remote.ID(i.ID)
-		fmt.Printf("  checking id: %v\n", id)
 		_, err = r.ImageMetadata(id)
-		if err != nil {
-			fmt.Printf("    not found: %v\n", id)
+		if err == nil {
+			fmt.Printf("  exists   : %v\n", id)
+		} else {
+			fmt.Printf("  not found: %v\n", id)
 			missingIds[id] = empty
 		}
 	}
