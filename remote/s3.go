@@ -85,7 +85,7 @@ func (remote *S3Remote) Validate() error {
 
 // Remote: describe the remote
 func (remote *S3Remote) Desc() string {
-	return fmt.Sprintf("s3(bucket=%s, region=%s, accessKey=%s)", remote.BucketName, remote.client.Region.Name, remote.client.Auth.AccessKey)
+	return fmt.Sprintf("s3(bucket=%s, region=%s)", remote.BucketName, remote.client.Region.Name)
 }
 
 type putFileTuple struct {
