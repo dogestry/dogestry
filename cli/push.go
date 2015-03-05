@@ -52,12 +52,10 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 	fmt.Printf("Using docker endpoint for push: %v\n", cli.DockerHost)
 	fmt.Printf("Remote: %v\n", remote.Desc())
 
-	fmt.Println("Exporting files")
 	if err = cli.exportToFiles(image, remote, imageRoot); err != nil {
 		return err
 	}
 
-	fmt.Println("Pushing image to remote")
 	if err := remote.Push(image, imageRoot); err != nil {
 		return err
 	}
@@ -65,9 +63,15 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 	return nil
 }
 
+// There's no Set data structure in Go, so use a map to simulate one.
+type set map[remote.ID]struct{}
+
+// We don't use the value in a set, so it's always empty.
+var empty struct{}
+
 // Stream the tarball from docker and translate it into the portable repo format
 // Note that its easier to handle as a stream on the way out.
-func (cli *DogestryCli) exportImageToFiles(image, root string) error {
+func (cli *DogestryCli) exportImageToFiles(image, root string, saveIds set) error {
 	fmt.Printf("Exporting image: %v to: %v\n", image, root)
 
 	reader, writer := io.Pipe()
@@ -92,9 +96,21 @@ func (cli *DogestryCli) exportImageToFiles(image, root string) error {
 				return
 			}
 
-			if err := cli.createFileFromTar(root, header, tarball); err != nil {
-				errch <- err
-				return
+			parts := strings.Split(header.Name, "/")
+			idFromFile := remote.ID(parts[0])
+
+			if _, ok := saveIds[idFromFile]; ok {
+				if err := cli.createFileFromTar(root, header, tarball); err != nil {
+					errch <- err
+					return
+				}
+			} else {
+				// Drain the reader. Is this necessary?
+				if _, err := io.Copy(ioutil.Discard, tarball); err != nil {
+					errch <- err
+					return
+				}
+
 			}
 		}
 
@@ -197,30 +213,33 @@ func (cli *DogestryCli) exportToFiles(image string, r remote.Remote, imageRoot s
 		fmt.Printf("Error getting image history: %v\n", err)
 	}
 
+	fmt.Println("Checking layers on remote")
+
 	imageID := remote.ID(imageHistory[0].ID)
 	repoName, repoTag := remote.NormaliseImageName(image)
 
-	// In theory, we could just check the "top layer" and assume that, if it exists, then
-	// that means all the parent layers are present. Instead, this checks all image layers,
-	// which is a little safer, but slower.
-	//
-	// As soon as one check fails, we can break out of the loop, since that means we will have
-	// to export the entire image.
+	// Check the remote to see what layers are missing. Only missing Ids will
+	// need to be saved to disk when exporting the docker image.
+
+	missingIds := make(set)
+
 	for _, i := range imageHistory {
 		id := remote.ID(i.ID)
-		fmt.Printf("  checking id: %v\n", id)
 		_, err = r.ImageMetadata(id)
-		if err != nil {
-			break
+		if err == nil {
+			fmt.Printf("  exists   : %v\n", id)
+		} else {
+			fmt.Printf("  not found: %v\n", id)
+			missingIds[id] = empty
 		}
 	}
 
-	if err == nil {
+	if len(missingIds) == 0 {
 		if err := cli.exportMetaDataToFiles(repoName, repoTag, imageID, imageRoot); err != nil {
 			return err
 		}
 	} else {
-		if err := cli.exportImageToFiles(image, imageRoot); err != nil {
+		if err := cli.exportImageToFiles(image, imageRoot, missingIds); err != nil {
 			return err
 		}
 	}

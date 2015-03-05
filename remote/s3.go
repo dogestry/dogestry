@@ -108,8 +108,7 @@ func makeFilesChan(keysToPush keys) <-chan putFileTuple {
 func (remote *S3Remote) Push(image, imageRoot string) error {
 	var err error
 
-	fmt.Println("Checking keys on S3 remote")
-	keysToPush, err := remote.localKeysToPush(imageRoot)
+	keysToPush, err := remote.localKeys(imageRoot)
 	if err != nil {
 		return fmt.Errorf("error calculating keys to push: %v", err)
 	}
@@ -376,56 +375,6 @@ func (remote *S3Remote) localKeys(root string) (keys, error) {
 	}
 
 	return localKeys, nil
-}
-
-// localKeysToPush checks each file in imageRoot to see if it already exists
-// in S3, or if it needs to be updated because its contents may have changed.
-// It returns a list of keys to push to S3.
-func (remote *S3Remote) localKeysToPush(imageRoot string) (keys, error) {
-	var err error
-
-	keysToPush := make(keys)
-
-	localKeys, err := remote.localKeys(imageRoot)
-	if err != nil {
-		return nil, err
-	}
-
-	bucket := remote.getBucket()
-
-	resultsc := make(chan string)
-
-	var wg sync.WaitGroup
-	for key, def := range localKeys {
-		wg.Add(1)
-		go func(k string, path string) {
-			exists, err := bucket.Exists(k)
-			if err != nil {
-				exists = false
-			}
-			if !exists {
-				fmt.Printf("  not found: %v (%v)\n", k, utils.FileHumanSize(path))
-				resultsc <- k
-			} else if strings.HasPrefix(k, "repositories/") {
-				fmt.Printf("  stale    : %v (%v)\n", k, utils.FileHumanSize(path))
-				resultsc <- k
-			} else {
-				fmt.Printf("  exists   : %v (%v)\n", k, utils.FileHumanSize(path))
-			}
-			wg.Done()
-		}(key, def.fullPath)
-	}
-
-	go func() {
-		wg.Wait()
-		close(resultsc)
-	}()
-
-	for k := range resultsc {
-		keysToPush[k] = localKeys[k]
-	}
-
-	return keysToPush, err
 }
 
 type progress struct {
