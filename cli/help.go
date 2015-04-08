@@ -16,6 +16,7 @@ const HelpMessage string = `Usage: dogestry [OPTIONS] COMMAND [arg...]
   Options:
      -config     Path to optional config file
      -pullhosts  A comma-separated list of docker hosts where the image will be pulled
+     -lockfile   Path to optional lock file to use, prevents parallel execution
 
   Typical S3 Usage:
      dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <image name>

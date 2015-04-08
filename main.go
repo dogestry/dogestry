@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 )
 
 type pullHosts []string
@@ -28,6 +29,7 @@ var (
 	flConfigFile string
 	flVersion    bool
 	flPullHosts  pullHosts
+	flLockFile   string
 )
 
 func init() {
@@ -40,6 +42,24 @@ func init() {
 	flag.BoolVar(&flVersion, "version", versionDefault, versionUsage)
 	flag.BoolVar(&flVersion, "v", versionDefault, versionUsage+" (short)")
 	flag.Var(&flPullHosts, "pullhosts", "a comma-separated list of docker hosts where the image will be pulled")
+	flag.StringVar(&flLockFile, "lockfile", "", "lockfile to use while executing command, prevents parallel executions")
+}
+
+// getLock will return the lock file once it has exclusive access to it.
+// This prevents multiple processes getting a lock at the same time.
+func getLock(file string) (fp *os.File, err error) {
+	for {
+		fp, err = os.OpenFile(file, os.O_EXCL|os.O_CREATE|os.O_WRONLY, 0666)
+		if patherr, ok := err.(*os.PathError); ok {
+			if strings.Contains(patherr.Error(), "file exists") {
+				// Lock file still exists, wait for a while and try again.
+				time.Sleep(time.Second)
+				continue
+			}
+		}
+		// Either we suceeded creating the lock or an unknown error occured.
+		return
+	}
 }
 
 func main() {
@@ -57,6 +77,16 @@ func main() {
 			log.Fatal(err)
 		}
 		return
+	}
+
+	if flLockFile != "" {
+		log.Println("Waiting for lock file")
+		if _, err := getLock(flLockFile); err != nil {
+			log.Println("Lock error:", err)
+			return
+		}
+		log.Println("Got lock")
+		defer os.Remove(flLockFile)
 	}
 
 	args := flag.Args()
