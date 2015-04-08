@@ -7,8 +7,10 @@ import (
 	"github.com/dogestry/dogestry/config"
 	"log"
 	"os"
+	"os/signal"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -47,9 +49,9 @@ func init() {
 
 // getLock will return the lock file once it has exclusive access to it.
 // This prevents multiple processes getting a lock at the same time.
-func getLock(file string) (fp *os.File, err error) {
+func getLock(file string) error {
 	for {
-		fp, err = os.OpenFile(file, os.O_EXCL|os.O_CREATE|os.O_WRONLY, 0666)
+		_, err := os.OpenFile(file, os.O_EXCL|os.O_CREATE|os.O_WRONLY, 0666)
 		if patherr, ok := err.(*os.PathError); ok {
 			if strings.Contains(patherr.Error(), "file exists") {
 				// Lock file still exists, wait for a while and try again.
@@ -58,7 +60,7 @@ func getLock(file string) (fp *os.File, err error) {
 			}
 		}
 		// Either we suceeded creating the lock or an unknown error occured.
-		return
+		return err
 	}
 }
 
@@ -79,16 +81,6 @@ func main() {
 		return
 	}
 
-	if flLockFile != "" {
-		log.Println("Waiting for lock file")
-		if _, err := getLock(flLockFile); err != nil {
-			log.Println("Lock error:", err)
-			return
-		}
-		log.Println("Got lock")
-		defer os.Remove(flLockFile)
-	}
-
 	args := flag.Args()
 
 	cfg, err := config.NewConfig(flConfigFile)
@@ -101,12 +93,47 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = dogestryCli.RunCmd(args...)
+	signalc := make(chan os.Signal, 1)
+	signal.Notify(signalc, os.Interrupt, os.Kill, syscall.SIGTERM)
 
-	if err == nil {
-		dogestryCli.Cleanup()
+	lockerrc := make(chan error)
+	locked := make(chan struct{})
+	if flLockFile != "" {
+		log.Println("Waiting for lock file")
+		go func() {
+			lockerrc <- getLock(flLockFile)
+		}()
 	} else {
-		dogestryCli.Cleanup()
-		log.Fatal(err)
+		close(locked)
+	}
+
+	errc := make(chan error)
+	go func() {
+		<-locked
+		errc <- dogestryCli.RunCmd(args...)
+	}()
+
+	for {
+		select {
+		case err := <-lockerrc:
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			defer os.Remove(flLockFile)
+			close(locked)
+			// We don't expect more than one error so disable this channel
+			lockerrc = nil
+		case err := <-errc:
+			if err != nil {
+				log.Println(err)
+			}
+			dogestryCli.Cleanup()
+			return
+		case <-signalc:
+			log.Println("Got signal, exiting")
+			return
+			// TODO: Also make it possible for dogestry cli to cancel pending actions.
+		}
 	}
 }
