@@ -8,9 +8,26 @@ Simple CLI app for storing Docker image on Amazon S3.
 
 * Go 1.2 or higher
 
-* Docker
+* Docker 1.2 or higher
+ 
+* AWS account with at least one S3 bucket
 
 ## Usage
+
+### Setup
+
+Typical S3 Usage:
+```
+$ export AWS_ACCESS_KEY=ABC
+$ export AWS_SECRET_KEY=DEF
+$ export DOCKER_HOST=tcp://localhost:2375
+$ dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <image name>
+$ dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <image name>
+```
+
+Dogestry can run without a configuration file (example config `dogestry.eg.cfg`), but it's there if you need it.
+
+By default dogestry looks for config file in `./dogestry.cfg`.
 
 ### Push
 
@@ -19,11 +36,21 @@ Push the `hipache` image to the S3 bucket `ops-goodies` located in `us-west-2`:
 dogestry push s3://ops-goodies/?region=us-west-2 hipache
 ```
 
+Push the `hipache` image to the S3 bucket `ops-goodies` located in `us-west-2` with tag `latest`:
+```
+dogestry push s3://ops-goodies/?region=us-west-2 hipache:latest
+```
+
 ### Pull
 
 Pull the `hipache` image and tag from S3 bucket `ops-goodies`:
 ```
 dogestry pull s3://ops-goodies/docker-repo/?region=us-west-2 hipache
+```
+
+Pull the `hipache` image and tag from S3 bucket `ops-goodies` with tag `latest`:
+```
+dogestry pull s3://ops-goodies/docker-repo/?region=us-west-2 hipache:latest
 ```
 
 If you want to pull an image from S3 to multiple hosts, you can use the `-pullhosts` option.
@@ -36,24 +63,9 @@ The s3 version, with pullhosts:
 dogestry -pullhosts tcp://host-1:2375,tcp://host-2:2375,tcp://host-3:2375 s3://ops-goodies/docker-repo/ hipache
 ```
 
-Typical S3 Usage:
-```
-export AWS_ACCESS_KEY=ABC
-export AWS_SECRET_KEY=DEF
-export DOCKER_HOST=tcp://localhost:2375
-dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <image name>
-dogestry pull s3://<bucket name>/<path name>/?region=us-east-1 <image name>
-```
-
-
-## Configuration
-
-Dogestry can run without a configuration file, but it's there if you need it.
-
-By default dogestry looks for config file in `./dogestry.cfg`.
-
-
 ## S3 files layout
+
+Dogestry will create two directories within your S3 bucket called "images" and "repositories". Example contents:
 
 Images:
 ```
