@@ -45,12 +45,12 @@ dogestry push s3://ops-goodies/?region=us-west-2 hipache:latest
 
 Pull the `hipache` image and tag from S3 bucket `ops-goodies`:
 ```
-dogestry pull s3://ops-goodies/docker-repo/?region=us-west-2 hipache
+dogestry pull s3://ops-goodies/?region=us-west-2 hipache
 ```
 
 Pull the `hipache` image and tag from S3 bucket `ops-goodies` with tag `latest`:
 ```
-dogestry pull s3://ops-goodies/docker-repo/?region=us-west-2 hipache:latest
+dogestry pull s3://ops-goodies/?region=us-west-2 hipache:latest
 ```
 
 If you want to pull an image from S3 to multiple hosts, you can use the `-pullhosts` option.
