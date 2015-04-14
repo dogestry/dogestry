@@ -234,14 +234,15 @@ func (cli *DogestryCli) exportToFiles(image string, r remote.Remote, imageRoot s
 		}
 	}
 
-	if len(missingIds) == 0 {
-		if err := cli.exportMetaDataToFiles(repoName, repoTag, imageID, imageRoot); err != nil {
-			return err
-		}
-	} else {
+	if len(missingIds) > 0 {
 		if err := cli.exportImageToFiles(image, imageRoot, missingIds); err != nil {
 			return err
 		}
 	}
+
+	if err := cli.exportMetaDataToFiles(repoName, repoTag, imageID, imageRoot); err != nil {
+		return err
+	}
+
 	return nil
 }
