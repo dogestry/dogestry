@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AdRoll/goamz/aws"
-	"github.com/AdRoll/goamz/s3"
-	"github.com/dogestry/dogestry/utils"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/AdRoll/goamz/aws"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/AdRoll/goamz/s3"
+
 	docker "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/fsouza/go-dockerclient"
 	"github.com/dogestry/dogestry/utils"
 )
