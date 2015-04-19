@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/dogestry/dogestry",
+	"ImportPath": "github.com/matthewkmayer/dogestry",
 	"GoVersion": "go1.4.2",
 	"Packages": [
 		"./..."
@@ -15,16 +15,16 @@
 			"Rev": "6dcec6ed3bdf8559ac1696bc32d7dbd9aadaf5b6"
 		},
 		{
-			"ImportPath": "github.com/crowdmob/goamz/aws",
-			"Rev": "3a06871fe9fc0281ca90f3a7d97258d042ed64c0"
+			"ImportPath": "github.com/AdRoll/goamz/aws",
+			"Rev": "6fec7879534d579585dca99c63a96167122370ef"
 		},
 		{
-			"ImportPath": "github.com/crowdmob/goamz/s3",
-			"Rev": "3a06871fe9fc0281ca90f3a7d97258d042ed64c0"
+			"ImportPath": "github.com/AdRoll/goamz/s3",
+			"Rev": "6fec7879534d579585dca99c63a96167122370ef"
 		},
 		{
-			"ImportPath": "github.com/crowdmob/goamz/testutil",
-			"Rev": "3a06871fe9fc0281ca90f3a7d97258d042ed64c0"
+			"ImportPath": "github.com/AdRoll/goamz/testutil",
+			"Rev": "6fec7879534d579585dca99c63a96167122370ef"
 		},
 		{
 			"ImportPath": "github.com/docker/docker/pkg/archive",
@@ -69,7 +69,7 @@
 		{
 			"ImportPath": "github.com/mitchellh/go-homedir",
 			"Rev": "7d2d8c8a4e078ce3c58736ab521a40b37a504c52"
-		},
+		}
 		{
 			"ImportPath": "gopkg.in/check.v1",
 			"Rev": "64131543e7896d5bcc6bd5a76287eb75ea96c673"
