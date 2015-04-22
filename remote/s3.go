@@ -1,23 +1,20 @@
 package remote
 
 import (
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/aws"
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/s3"
-	"github.com/dogestry/dogestry/utils"
-
 	"bufio"
 	"encoding/json"
-
 	"fmt"
-	docker "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/fsouza/go-dockerclient"
+	"io"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
-	"io"
-	"os"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/aws"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/s3"
+	docker "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/fsouza/go-dockerclient"
+	"github.com/dogestry/dogestry/utils"
 )
 
 type S3Remote struct {
@@ -129,32 +126,28 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 
 	numGoroutines := 100
 
-	var wg sync.WaitGroup
-
 	fmt.Println("Pushing keys to S3 remote")
 	for i := 0; i < numGoroutines; i++ {
-		wg.Add(1)
-
 		go func() {
-			defer wg.Done()
 			for putFile := range putFilesChan {
 				putFileErr := remote.putFile(putFile.KeyDef.fullPath, &putFile.KeyDef)
 
 				if (putFileErr != nil) && ((putFileErr != io.EOF) && (!strings.Contains(putFileErr.Error(), "EOF"))) {
 					putFileErrChan <- putFileResult{putFile.Key, putFileErr}
+					return
 				}
+				putFileErrChan <- putFileResult{"", nil}
 			}
 		}()
 	}
 
-	go func() {
-		wg.Wait()
-		close(putFileErrChan)
-	}()
-
-	for p := range putFileErrChan {
-		putFileErrMap[p.host] = p.err
+	for i := 0; i < len(keysToPush); i++ {
+		p := <-putFileErrChan
+		if p.err != nil {
+			putFileErrMap[p.host] = p.err
+		}
 	}
+	close(putFileErrChan)
 
 	if len(putFileErrMap) > 0 {
 		fmt.Printf("Errors during Push: %v\n", putFileErrMap)
@@ -418,8 +411,6 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 // key: "images/456/json"
 // downloads to: "/tmp/rego/123/456/json"
 func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
-	var wg sync.WaitGroup
-
 	getFilesErrMap := make(map[string]error)
 
 	type errTuple struct {
@@ -430,12 +421,9 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
 	tupleCh := make(chan errTuple)
 
 	for _, key := range imageKeys {
-		wg.Add(1)
-
 		keyDefClone := *key
 
 		go func(dst, rootKey string, key keyDef) {
-			defer wg.Done()
 			relKey := strings.TrimPrefix(key.key, rootKey)
 			relKey = strings.TrimPrefix(relKey, "/")
 
@@ -444,17 +432,18 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
 				tupleCh <- errTuple{key.key, err}
 				return
 			}
+			tupleCh <- errTuple{"", nil}
+
 		}(dst, rootKey, keyDefClone)
 	}
 
-	go func() {
-		wg.Wait()
-		close(tupleCh)
-	}()
-
-	for tuple := range tupleCh {
-		getFilesErrMap[tuple.fileKey] = tuple.err
+	for range imageKeys {
+		tuple := <-tupleCh
+		if tuple.err != nil {
+			getFilesErrMap[tuple.fileKey] = tuple.err
+		}
 	}
+	close(tupleCh)
 
 	if len(getFilesErrMap) > 0 {
 		fmt.Printf("Errors during getFiles: %v\n", getFilesErrMap)
