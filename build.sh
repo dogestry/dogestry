@@ -2,12 +2,12 @@
 
 set -e
 
-d="sudo docker"
+[[ -z $DOCKER ]] && DOCKER=docker
 
 # don't rm intermediate containers... we want them!
-$d build --rm=false -t dogestry .
-id=$($d inspect -f '{{ .container }}' dogestry)
-$d cp $id:dogestry .
+$DOCKER build --rm=false -t dogestry .
+id=$($DOCKER inspect -f '{{ .container }}' dogestry)
+$DOCKER cp $id:dogestry .
 
 if [ -f "./push.sh" ]; then
   ./push.sh

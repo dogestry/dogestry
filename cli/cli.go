@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"sync"
 
 	docker "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/fsouza/go-dockerclient"
 	homedir "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/mitchellh/go-homedir"
@@ -300,15 +299,10 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 
 	tupleCh := make(chan hostErrTuple)
 
-	var wg sync.WaitGroup
-
 	for i, client := range cli.PullClients {
-		wg.Add(1)
-
 		host := cli.PullHosts[i]
 
 		go func(client *docker.Client, host string) {
-			defer wg.Done()
 			cmd := exec.Command("tar", "cvf", "-", "-C", imageRoot, ".")
 			cmd.Env = os.Environ()
 			cmd.Dir = imageRoot
@@ -331,18 +325,19 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 				tupleCh <- hostErrTuple{host, err}
 				return
 			}
+			tupleCh <- hostErrTuple{"", nil}
+
 		}(client, host)
 	}
 
-	go func() {
-		wg.Wait()
-		close(tupleCh)
-	}()
-
 	uploadImageErrMap := make(map[string]error)
-	for tuple := range tupleCh {
-		uploadImageErrMap[tuple.host] = tuple.err
+	for range cli.PullClients {
+		tuple := <-tupleCh
+		if tuple.err != nil {
+			uploadImageErrMap[tuple.host] = tuple.err
+		}
 	}
+	close(tupleCh)
 
 	err := cli.outputStatus(uploadImageErrMap)
 	if len(uploadImageErrMap) > 0 {
@@ -373,8 +368,6 @@ func (cli *DogestryCli) makeDownloadMap(r remote.Remote, id remote.ID, imageRoot
 }
 
 func (cli *DogestryCli) downloadImages(r remote.Remote, downloadMap DownloadMap, imageRoot string) error {
-	var wg sync.WaitGroup
-
 	pullImagesErrMap := make(map[string]error)
 
 	type pathErrTuple struct {
@@ -385,10 +378,7 @@ func (cli *DogestryCli) downloadImages(r remote.Remote, downloadMap DownloadMap,
 	tupleCh := make(chan pathErrTuple)
 
 	for id, _ := range downloadMap {
-		wg.Add(1)
-
 		go func(imageRoot string, id remote.ID) {
-			defer wg.Done()
 			downloadPath := filepath.Join(imageRoot, string(id))
 
 			fmt.Printf("Pulling image id '%s' to: %v\n", id.Short(), downloadPath)
@@ -398,17 +388,17 @@ func (cli *DogestryCli) downloadImages(r remote.Remote, downloadMap DownloadMap,
 				tupleCh <- pathErrTuple{downloadPath, err}
 				return
 			}
+			tupleCh <- pathErrTuple{"", nil}
 		}(imageRoot, id)
 	}
 
-	go func() {
-		wg.Wait()
-		close(tupleCh)
-	}()
-
-	for tuple := range tupleCh {
-		pullImagesErrMap[tuple.path] = tuple.err
+	for range downloadMap {
+		tuple := <-tupleCh
+		if tuple.err != nil {
+			pullImagesErrMap[tuple.path] = tuple.err
+		}
 	}
+	close(tupleCh)
 
 	if len(pullImagesErrMap) > 0 {
 		fmt.Printf("Errors pulling images: %v\n", pullImagesErrMap)
