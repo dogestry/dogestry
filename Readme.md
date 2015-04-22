@@ -6,11 +6,9 @@ Simple CLI app for storing Docker image on Amazon S3.
 
 ## Prerequisites
 
-* Go 1.2 or higher
-
-* Docker 1.2 or higher
- 
 * AWS account with at least one S3 bucket
+* Go 1.4 or higher (*development only*)
+* Docker 1.4 or higher (*development only*)
 
 ## Usage
 
