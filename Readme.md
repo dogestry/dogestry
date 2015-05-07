@@ -10,6 +10,12 @@ Simple CLI app for storing Docker image on Amazon S3.
 * Go 1.4 or higher (*development only*)
 * Docker 1.4 or higher
 
+## Installation
+
+If you just want to *run* Dogestry, get the [binary release](/dogestry/dogestry/releases) that works for your platform. It's a statically linked binary: there are no dependencies. Uncompress it and run it!
+
+If you prefer to build it yourself, clone the repo and `go get ./... && go build`
+
 ## Usage
 
 ### Setup
