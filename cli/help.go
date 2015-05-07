@@ -8,6 +8,7 @@ const HelpMessage string = `Usage: dogestry [OPTIONS] COMMAND [arg...]
 
   Commands:
      help        Print help message. Use help COMMAND for more specific help
+     list        List images on remote
      pull        Pull IMAGE from remote and load it into docker
      push        Push IMAGE from docker to remote
      remote      Show info about remote
