@@ -13,29 +13,30 @@ import (
 
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
+	"github.com/dogestry/dogestry/config"
 	"github.com/dogestry/dogestry/utils"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/rlmcpherson/s3gof3r"
 )
 
-func NewS3Remote(config RemoteConfig) (*S3Remote, error) {
+func NewS3Remote(config config.Config) (*S3Remote, error) {
 	s3, err := newS3Client(config)
 	if err != nil {
 		return &S3Remote{}, err
 	}
 
-	s3gof3rKeys := s3gof3r.Keys{AccessKey: config.Config.S3.Access_Key_Id, SecretKey: config.Config.S3.Secret_Key}
+	s3gof3rKeys := s3gof3r.Keys{AccessKey: config.AWS.AccessKeyID, SecretKey: config.AWS.SecretAccessKey}
 
 	return &S3Remote{
 		config:               config,
-		BucketName:           config.Url.Host,
+		BucketName:           config.AWS.S3URL.Host,
 		client:               s3,
 		uploadDownloadClient: s3gof3r.New("", s3gof3rKeys),
 	}, nil
 }
 
 type S3Remote struct {
-	config               RemoteConfig
+	config               config.Config
 	BucketName           string
 	Bucket               *s3.Bucket
 	client               *s3.S3
@@ -47,15 +48,15 @@ var (
 )
 
 // create a new s3 client from the url
-func newS3Client(config RemoteConfig) (*s3.S3, error) {
-	auth, err := aws.GetAuth(config.Config.S3.Access_Key_Id, config.Config.S3.Secret_Key, "", time.Now())
+func newS3Client(config config.Config) (*s3.S3, error) {
+	auth, err := aws.GetAuth(config.AWS.AccessKeyID, config.AWS.SecretAccessKey, "", time.Now())
 	if err != nil {
 		return &s3.S3{}, err
 	}
 
 	var regionName string
 
-	regQuery := config.Url.Query()["region"]
+	regQuery := config.AWS.S3URL.Query()["region"]
 
 	if len(regQuery) > 0 && regQuery[0] != "" {
 		regionName = regQuery[0]
@@ -124,7 +125,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 
 	defer close(putFileErrChan)
 
-	numGoroutines := 100
+	numGoroutines := 25
 
 	log.Println("Pushing files to S3 remote")
 	for i := 0; i < numGoroutines; i++ {
@@ -136,6 +137,8 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 					putFileErrChan <- putFileResult{putFile.Key, putFileErr}
 					return
 				}
+
+				putFileErrChan <- putFileResult{}
 			}
 		}()
 	}
@@ -145,11 +148,10 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 		if p.err != nil {
 			log.Printf("error when uploading to S3: %v", p.err)
 			return fmt.Errorf("Error when uploading to S3: %v", p.err)
-
 		}
 	}
 
-	return err
+	return nil
 }
 
 func (remote *S3Remote) PullImageId(id ID, dst string) error {
@@ -229,7 +231,7 @@ func (remote *S3Remote) getBucket() *s3.Bucket {
 }
 
 func (remote *S3Remote) getUploadDownloadBucket() *s3gof3r.Bucket {
-	return remote.uploadDownloadClient.Bucket(remote.config.Url.Host)
+	return remote.uploadDownloadClient.Bucket(remote.config.AWS.S3URL.Host)
 }
 
 type keyDef struct {

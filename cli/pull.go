@@ -29,14 +29,17 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 		os.Exit(2)
 	}
 
-	remoteDef := pullFlags.Arg(0)
+	S3URL := pullFlags.Arg(0)
 	image := pullFlags.Arg(1)
+
+	cli.Config.SetS3URL(S3URL)
 
 	imageRoot, err := cli.WorkDir(image)
 	if err != nil {
 		return err
 	}
-	r, err := remote.NewRemote(remoteDef, cli.Config)
+
+	r, err := remote.NewRemote(cli.Config)
 	if err != nil {
 		return err
 	}

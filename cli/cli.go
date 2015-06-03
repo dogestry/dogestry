@@ -62,7 +62,7 @@ func NewDogestryCli(cfg config.Config, hosts []string) (*DogestryCli, error) {
 	dogestryCli := &DogestryCli{
 		Config:     cfg,
 		err:        os.Stderr,
-		DockerHost: cfg.GetDockerHost(),
+		DockerHost: cfg.Docker.Connection,
 		PullHosts:  hosts,
 	}
 

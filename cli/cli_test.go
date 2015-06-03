@@ -1,18 +1,16 @@
 package cli
 
 import (
-	"github.com/dogestry/dogestry/config"
 	"os"
 	"testing"
+
+	"github.com/dogestry/dogestry/config"
 )
 
 var hosts = make([]string, 0)
 
 func TestNewDogestryCli(t *testing.T) {
-	cfg, err := config.NewConfig("")
-	if err != nil {
-		t.Fatalf("Creating config struct should work. Error: %v", err)
-	}
+	cfg := config.NewConfig()
 
 	dogestryCli, err := NewDogestryCli(cfg, hosts)
 	if err != nil {
@@ -25,7 +23,7 @@ func TestNewDogestryCli(t *testing.T) {
 }
 
 func TestCreateAndReturnTempDirAndCleanup(t *testing.T) {
-	cfg, _ := config.NewConfig("")
+	cfg := config.NewConfig()
 	dogestryCli, _ := NewDogestryCli(cfg, hosts)
 
 	tmpDir := dogestryCli.CreateAndReturnTempDir()

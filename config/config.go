@@ -1,65 +1,44 @@
 package config
 
 import (
+	"net/url"
 	"os"
-
-	"code.google.com/p/gcfg"
 )
 
-var (
-	DefaultConfigFilePath = "./dogestry.cfg"
-	DefaultConfig         = Config{
-		Remote: make(map[string]*RemoteConfig),
-	}
-)
+func NewConfig() Config {
+	c := Config{}
+	c.AWS.AccessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
+	c.AWS.SecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+	c.Docker.Connection = os.Getenv("DOCKER_HOST")
 
-func NewConfig(configFilePath string) (config Config, err error) {
-	if configFilePath == "" {
-		if _, err := os.Stat(DefaultConfigFilePath); !os.IsNotExist(err) {
-			configFilePath = DefaultConfigFilePath
-		} else {
-			return DefaultConfig, nil
-		}
+	if c.Docker.Connection == "" {
+		c.Docker.Connection = "unix:///var/run/docker.sock"
+	}
+	if "" != os.Getenv("DOCKER_HOST") {
+		c.Docker.Connection = os.Getenv("DOCKER_HOST")
 	}
 
-	err = gcfg.ReadFileInto(&config, configFilePath)
-	return
-}
-
-type RemoteConfig struct {
-	Url string
-}
-
-type S3Config struct {
-	Access_Key_Id string
-	Secret_Key    string
-}
-
-type DockerConfig struct {
-	Connection string
-}
-
-type DogestryConfig struct {
-	Temp_Dir string
+	return c
 }
 
 type Config struct {
-	Remote   map[string]*RemoteConfig
-	S3       S3Config
-	Docker   DockerConfig
-	Dockers  []DockerConfig
-	Dogestry DogestryConfig
+	AWS struct {
+		S3URL           *url.URL
+		AccessKeyID     string
+		SecretAccessKey string
+	}
+	Docker struct {
+		Connection string
+	}
 }
 
-func (c *Config) GetDockerHost() string {
-	dockerHost := c.Docker.Connection
-
-	if "" != os.Getenv("DOCKER_HOST") {
-		dockerHost = os.Getenv("DOCKER_HOST")
+func (c *Config) SetS3URL(rawurl string) error {
+	urlStruct, err := url.Parse(rawurl)
+	if err != nil {
+		return err
 	}
 
-	if "" == dockerHost {
-		dockerHost = "tcp://localhost:2375"
-	}
-	return dockerHost
+	c.AWS.S3URL = urlStruct
+
+	return nil
 }

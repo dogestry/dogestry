@@ -2,8 +2,6 @@ package remote
 
 import (
 	"errors"
-	"fmt"
-	"net/url"
 	"strings"
 
 	"github.com/dogestry/dogestry/config"
@@ -17,13 +15,6 @@ var (
 	ErrNoSuchTag   = errors.New("No such tag")
 	BreakWalk      = errors.New("break walk")
 )
-
-type RemoteConfig struct {
-	config.RemoteConfig
-	Kind   string
-	Config config.Config
-	Url    url.URL
-}
 
 type Image struct {
 	Repository string
@@ -65,70 +56,18 @@ type Remote interface {
 	List() ([]Image, error)
 }
 
-func NewRemote(remoteName string, config config.Config) (remote Remote, err error) {
-	remoteConfig, err := resolveConfig(remoteName, config)
+func NewRemote(config config.Config) (Remote, error) {
+	remote, err := NewS3Remote(config)
 	if err != nil {
-		return
-	}
-
-	switch remoteConfig.Kind {
-	case "local":
-		remote, err = NewLocalRemote(remoteConfig)
-	case "s3":
-		remote, err = NewS3Remote(remoteConfig)
-	default:
-		err = fmt.Errorf("unknown remote type '%s'", remoteConfig.Kind)
-		return
-	}
-
-	if err != nil {
-		return
+		return nil, err
 	}
 
 	err = remote.Validate()
-	return
-}
-
-func resolveConfig(remoteUrl string, config config.Config) (remoteConfig RemoteConfig, err error) {
-	// its a bareword, use it as a lookup key
-	if !strings.Contains(remoteUrl, "/") {
-		return lookupUrlInConfig(remoteUrl, config)
-	}
-
-	// its a url
-	return makeRemoteFromUrl(remoteUrl, config)
-}
-
-func lookupUrlInConfig(remoteName string, config config.Config) (remoteConfig RemoteConfig, err error) {
-	remote, ok := config.Remote[remoteName]
-	if !ok {
-		err = fmt.Errorf("no remote '%s' found", remoteName)
-		return
-	}
-
-	return makeRemoteFromUrl(remote.Url, config)
-	// XXX Extra setup can come from here
-}
-
-func makeRemoteFromUrl(remoteUrl string, config config.Config) (remoteConfig RemoteConfig, err error) {
-	remoteConfig = RemoteConfig{
-		Config: config,
-	}
-
-	u, err := url.Parse(remoteUrl)
 	if err != nil {
-		err = ErrInvalidRemote
-		return
+		return nil, err
 	}
 
-	if u.Scheme == "" {
-		u.Scheme = "local"
-	}
-	remoteConfig.Url = *u
-	remoteConfig.Kind = u.Scheme
-	remoteConfig.Config = config
-
-	return
+	return remote, nil
 }
 
 func NormaliseImageName(image string) (string, string) {

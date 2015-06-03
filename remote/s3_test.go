@@ -1,11 +1,6 @@
 package remote
 
 import (
-	//"bytes"
-	//"io/ioutil"
-	//"net/http"
-	//"strings"
-
 	"testing"
 	"time"
 
@@ -33,15 +28,6 @@ var _ = Suite(&S{})
 
 var testServer = testutil.NewHTTPServer()
 
-var baseConfig = RemoteConfig{
-	Config: config.Config{
-		S3: config.S3Config{
-			Access_Key_Id: "abc",
-			Secret_Key:    "123",
-		},
-	},
-}
-
 func (s *S) SetUpSuite(c *C) {
 	testServer.Start()
 
@@ -54,6 +40,8 @@ func (s *S) SetUpSuite(c *C) {
 	}
 
 	s.TempDir = tempDir
+
+	baseConfig := config.NewConfig()
 
 	s.remote = &S3Remote{
 		config:     baseConfig,

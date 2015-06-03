@@ -37,7 +37,7 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 		os.Exit(2)
 	}
 
-	remoteDef := pushFlags.Arg(0)
+	S3URL := pushFlags.Arg(0)
 	image := pushFlags.Arg(1)
 
 	imageRoot, err := cli.WorkDir(image)
@@ -45,7 +45,9 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 		return err
 	}
 
-	remote, err := remote.NewRemote(remoteDef, cli.Config)
+	cli.Config.SetS3URL(S3URL)
+
+	remote, err := remote.NewRemote(cli.Config)
 	if err != nil {
 		return err
 	}

@@ -3,12 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/dogestry/dogestry/cli"
-	"github.com/dogestry/dogestry/config"
 	"log"
 	"os"
 	"runtime"
 	"strings"
+
+	"github.com/dogestry/dogestry/cli"
+	"github.com/dogestry/dogestry/config"
 )
 
 type pullHosts []string
@@ -61,12 +62,7 @@ func main() {
 
 	args := flag.Args()
 
-	cfg, err := config.NewConfig(flConfigFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	dogestryCli, err := cli.NewDogestryCli(cfg, flPullHosts)
+	dogestryCli, err := cli.NewDogestryCli(config.NewConfig(), flPullHosts)
 	if err != nil {
 		log.Fatal(err)
 	}
