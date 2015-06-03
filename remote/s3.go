@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -109,7 +110,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 	}
 
 	if len(keysToPush) == 0 {
-		fmt.Println("Nothing to push")
+		log.Println("Nothing to push")
 		return nil
 	}
 
@@ -124,7 +125,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 
 	numGoroutines := 100
 
-	fmt.Println("Pushing keys to S3 remote")
+	log.Println("Pushing files to S3 remote")
 	for i := 0; i < numGoroutines; i++ {
 		go func() {
 			for putFile := range putFilesChan {
@@ -148,7 +149,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 	close(putFileErrChan)
 
 	if len(putFileErrMap) > 0 {
-		fmt.Printf("Errors during Push: %v\n", putFileErrMap)
+		log.Printf("Errors during Push: %v\n", putFileErrMap)
 		err = fmt.Errorf("error uploading to S3")
 	}
 
@@ -464,7 +465,7 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
 	close(tupleCh)
 
 	if len(getFilesErrMap) > 0 {
-		fmt.Printf("Errors during getFiles: %v\n", getFilesErrMap)
+		log.Printf("Errors during getFiles: %v\n", getFilesErrMap)
 		return fmt.Errorf("error downloading files from S3")
 	}
 
@@ -473,7 +474,7 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
 
 // get a single file from the s3 bucket
 func (remote *S3Remote) getFile(dst string, key *keyDef) error {
-	fmt.Printf("Pulling key %s (%s)\n", key.key, utils.HumanSize(key.s3Key.Size))
+	log.Printf("Pulling key %s (%s)\n", key.key, utils.HumanSize(key.s3Key.Size))
 
 	from, _, err := remote.getUploadDownloadBucket().GetReader(key.key, nil)
 	if err != nil {
@@ -524,7 +525,7 @@ func (remote *S3Remote) List() (images []Image, err error) {
 	for true {
 		resp, err := bucket.List("repositories/", "", nextMarker, 1000)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s unable to list images: %s", remote.Desc(), err)
+			log.Printf("%s unable to list images: %s", remote.Desc(), err)
 			return images, err
 		}
 
@@ -543,7 +544,7 @@ func (remote *S3Remote) List() (images []Image, err error) {
 		}
 		repo, tag := remote.ParseImagePath(k.Key, "repositories/")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error splitting repository key")
+			log.Printf("error splitting S3 key: repositories/")
 			return images, err
 		}
 
