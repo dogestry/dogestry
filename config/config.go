@@ -1,8 +1,9 @@
 package config
 
 import (
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/code.google.com/p/gcfg"
 	"os"
+
+	"code.google.com/p/gcfg"
 )
 
 var (

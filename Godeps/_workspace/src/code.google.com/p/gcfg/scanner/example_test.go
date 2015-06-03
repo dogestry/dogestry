@@ -9,8 +9,8 @@ import (
 )
 
 import (
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/code.google.com/p/gcfg/scanner"
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/code.google.com/p/gcfg/token"
+	"code.google.com/p/gcfg/scanner"
+	"code.google.com/p/gcfg/token"
 )
 
 func ExampleScanner_Scan() {

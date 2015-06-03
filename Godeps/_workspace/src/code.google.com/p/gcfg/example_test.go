@@ -5,7 +5,7 @@ import (
 	"log"
 )
 
-import "github.com/dogestry/dogestry/Godeps/_workspace/src/code.google.com/p/gcfg"
+import "code.google.com/p/gcfg"
 
 func ExampleReadStringInto() {
 	cfgStr := `; Comment line

@@ -11,7 +11,7 @@ import (
 )
 
 import (
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/code.google.com/p/gcfg/token"
+	"code.google.com/p/gcfg/token"
 )
 
 var fset = token.NewFileSet()

@@ -13,11 +13,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/aws"
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/s3"
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/testutil"
-	. "github.com/dogestry/dogestry/Godeps/_workspace/src/gopkg.in/check.v1"
+	"github.com/crowdmob/goamz/aws"
+	"github.com/crowdmob/goamz/s3"
+	"github.com/crowdmob/goamz/testutil"
 	"github.com/dogestry/dogestry/config"
+	. "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	docker "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/fsouza/go-dockerclient" // ErrInvalidRemote is returned when the remote is not a valid.
 	"github.com/dogestry/dogestry/config"
+	docker "github.com/fsouza/go-dockerclient"
 )
 
 var (

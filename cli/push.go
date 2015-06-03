@@ -4,14 +4,15 @@ import (
 	"archive/tar"
 	"encoding/json"
 	"fmt"
-	docker "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/fsouza/go-dockerclient"
-	"github.com/dogestry/dogestry/remote"
-	"github.com/dogestry/dogestry/utils"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/dogestry/dogestry/remote"
+	"github.com/dogestry/dogestry/utils"
+	docker "github.com/fsouza/go-dockerclient"
 )
 
 const PushHelpMessage string = `  Push IMAGE from docker to REMOTE.
