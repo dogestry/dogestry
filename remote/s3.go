@@ -362,9 +362,8 @@ func (remote *S3Remote) localKeys(root string) (keys, error) {
 		return nil
 	})
 
-	// XXX hmmm
 	if err != nil {
-		return localKeys, nil
+		return localKeys, err
 	}
 
 	return localKeys, nil
