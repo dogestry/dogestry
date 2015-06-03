@@ -110,7 +110,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 	}
 
 	if len(keysToPush) == 0 {
-		log.Println("Nothing to push")
+		log.Println("There are no files to push")
 		return nil
 	}
 
@@ -120,8 +120,9 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 	}
 
 	putFileErrChan := make(chan putFileResult)
-	putFileErrMap := make(map[string]error)
 	putFilesChan := makeFilesChan(keysToPush)
+
+	defer close(putFileErrChan)
 
 	numGoroutines := 100
 
@@ -135,7 +136,6 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 					putFileErrChan <- putFileResult{putFile.Key, putFileErr}
 					return
 				}
-				putFileErrChan <- putFileResult{"", nil}
 			}
 		}()
 	}
@@ -143,14 +143,10 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 	for i := 0; i < len(keysToPush); i++ {
 		p := <-putFileErrChan
 		if p.err != nil {
-			putFileErrMap[p.host] = p.err
-		}
-	}
-	close(putFileErrChan)
+			log.Printf("error when uploading to S3: %v", p.err)
+			return fmt.Errorf("Error when uploading to S3: %v", p.err)
 
-	if len(putFileErrMap) > 0 {
-		log.Printf("Errors during Push: %v\n", putFileErrMap)
-		err = fmt.Errorf("error uploading to S3")
+		}
 	}
 
 	return err
@@ -465,7 +461,7 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
 	close(tupleCh)
 
 	if len(getFilesErrMap) > 0 {
-		log.Printf("Errors during getFiles: %v\n", getFilesErrMap)
+		log.Printf("Errors during getFiles: %v", getFilesErrMap)
 		return fmt.Errorf("error downloading files from S3")
 	}
 
