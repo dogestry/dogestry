@@ -1,7 +1,6 @@
 package remote
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,17 +14,7 @@ import (
 	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/s3"
 	docker "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/fsouza/go-dockerclient"
 	"github.com/dogestry/dogestry/utils"
-)
-
-type S3Remote struct {
-	config     RemoteConfig
-	BucketName string
-	Bucket     *s3.Bucket
-	client     *s3.S3
-}
-
-var (
-	S3DefaultRegion = "us-east-1"
+	"github.com/rlmcpherson/s3gof3r"
 )
 
 func NewS3Remote(config RemoteConfig) (*S3Remote, error) {
@@ -34,28 +23,42 @@ func NewS3Remote(config RemoteConfig) (*S3Remote, error) {
 		return &S3Remote{}, err
 	}
 
-	url := config.Url
+	s3gof3rKeys := s3gof3r.Keys{AccessKey: config.Config.S3.Access_Key_Id, SecretKey: config.Config.S3.Secret_Key}
 
 	return &S3Remote{
-		config:     config,
-		BucketName: url.Host,
-		client:     s3,
+		config:               config,
+		BucketName:           config.Url.Host,
+		client:               s3,
+		uploadDownloadClient: s3gof3r.New("", s3gof3rKeys),
 	}, nil
 }
 
+type S3Remote struct {
+	config               RemoteConfig
+	BucketName           string
+	Bucket               *s3.Bucket
+	client               *s3.S3
+	uploadDownloadClient *s3gof3r.S3
+}
+
+var (
+	S3DefaultRegion = "us-east-1"
+)
+
 // create a new s3 client from the url
 func newS3Client(config RemoteConfig) (*s3.S3, error) {
-	auth, err := getS3Auth(config)
+	auth, err := aws.GetAuth(config.Config.S3.Access_Key_Id, config.Config.S3.Secret_Key, "", time.Now())
 	if err != nil {
 		return &s3.S3{}, err
 	}
 
 	var regionName string
+
 	regQuery := config.Url.Query()["region"]
+
 	if len(regQuery) > 0 && regQuery[0] != "" {
 		regionName = regQuery[0]
 	} else {
-		// TODO get default region from config
 		regionName = S3DefaultRegion
 	}
 
@@ -64,14 +67,9 @@ func newS3Client(config RemoteConfig) (*s3.S3, error) {
 	return s3.New(auth, region), nil
 }
 
-// determine the s3 auth from various sources
-func getS3Auth(config RemoteConfig) (aws.Auth, error) {
-	s3config := config.Config.S3
-	return aws.GetAuth(s3config.Access_Key_Id, s3config.Secret_Key, "", time.Now())
-}
-
 func (remote *S3Remote) Validate() error {
 	bucket := remote.getBucket()
+
 	_, err := bucket.List("", "", "", 1)
 	if err != nil {
 		return fmt.Errorf("%s unable to ping s3 bucket: %s", remote.Desc(), err)
@@ -229,10 +227,12 @@ func (remote *S3Remote) ParseImagePath(path string, prefix string) (repo, tag st
 	return ParseImagePath(path, prefix)
 }
 
-// get the configured bucket
 func (remote *S3Remote) getBucket() *s3.Bucket {
-	// memoise?
 	return remote.client.Bucket(remote.BucketName)
+}
+
+func (remote *S3Remote) getUploadDownloadBucket() *s3gof3r.Bucket {
+	return remote.uploadDownloadClient.Bucket(remote.config.Url.Host)
 }
 
 type keyDef struct {
@@ -395,12 +395,31 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 
 	progressReader := utils.NewProgressReader(f, finfo.Size(), src)
 
-	err = remote.getBucket().PutReader(dstKey, progressReader, finfo.Size(), "application/octet-stream", s3.Private, s3.Options{})
+	// Open a PutWriter for actual file upload
+	w, err := remote.getUploadDownloadBucket().PutWriter(f.Name(), nil, nil)
 	if err != nil {
 		return err
 	}
+	if _, err = io.Copy(w, progressReader); err != nil { // Copy to S3
+		return err
+	}
+	if err = w.Close(); err != nil {
+		return err
+	}
 
-	return remote.getBucket().Put(dstKey+".sum", []byte(key.Sum()), "text/plain", s3.Private, s3.Options{})
+	// Open a second PutWriter for checksum upload.
+	w2, err := remote.getUploadDownloadBucket().PutWriter(dstKey+".sum", nil, nil)
+	if err != nil {
+		return err
+	}
+	if _, err = io.Copy(w2, strings.NewReader(key.Sum())); err != nil { // Copy to S3
+		return err
+	}
+	if err = w2.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // get files from the s3 bucket to a local path, relative to rootKey
@@ -457,14 +476,11 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
 func (remote *S3Remote) getFile(dst string, key *keyDef) error {
 	fmt.Printf("Pulling key %s (%s)\n", key.key, utils.HumanSize(key.s3Key.Size))
 
-	srcKey := remote.remoteKey(key.key)
-
-	from, err := remote.getBucket().GetReader(srcKey)
+	from, _, err := remote.getUploadDownloadBucket().GetReader(key.key, nil)
 	if err != nil {
 		return err
 	}
 	defer from.Close()
-	bufFrom := bufio.NewReader(from)
 
 	if err := os.MkdirAll(filepath.Dir(dst), 0700); err != nil {
 		return err
@@ -475,15 +491,12 @@ func (remote *S3Remote) getFile(dst string, key *keyDef) error {
 		return err
 	}
 
-	// TODO add progress reader
-	progressReaderFrom := utils.NewProgressReader(bufFrom, key.s3Key.Size, key.key)
+	progressReaderFrom := utils.NewProgressReader(from, key.s3Key.Size, key.key)
 
 	_, err = io.Copy(to, progressReaderFrom)
 	if err != nil {
 		return err
 	}
-
-	// TODO validate against sum
 
 	return nil
 }
