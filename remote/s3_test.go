@@ -13,9 +13,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/aws"
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/s3"
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/testutil"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/AdRoll/goamz/aws"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/AdRoll/goamz/s3"
+	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/AdRoll/goamz/testutil"
 	. "github.com/dogestry/dogestry/Godeps/_workspace/src/gopkg.in/check.v1"
 	"github.com/dogestry/dogestry/config"
 )

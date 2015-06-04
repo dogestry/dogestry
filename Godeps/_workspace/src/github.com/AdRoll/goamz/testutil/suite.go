@@ -2,8 +2,8 @@ package testutil
 
 import (
 	"flag"
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/aws"
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/gopkg.in/check.v1"
+	"github.com/AdRoll/goamz/aws"
+	"gopkg.in/check.v1"
 )
 
 // Amazon must be used by all tested packages to determine whether to
