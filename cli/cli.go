@@ -313,13 +313,12 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 		progressBar.bar.ShowCounters = false
 
 		// Starts the placebo progress bar
-		go func(host string, progressBar *placeboProgressBar) {
-			fmt.Printf("Host: %v ", host)
+		go func(progressBar *placeboProgressBar) {
 			for {
 				progressBar.bar.Increment()
 				time.Sleep(time.Second)
 			}
-		}(host, progressBar)
+		}(progressBar)
 
 		go func(client *docker.Client, host string) {
 			cmd := exec.Command("tar", "cvf", "-", "-C", imageRoot, ".")
