@@ -1,7 +1,7 @@
 package s3
 
 import (
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/aws"
+	"github.com/crowdmob/goamz/aws"
 )
 
 var originalStrategy = attempts

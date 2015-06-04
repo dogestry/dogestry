@@ -11,10 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	log "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/Sirupsen/logrus"
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/docker/docker/pkg/pools"
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/docker/docker/pkg/system"
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/docker/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar"
+	"github.com/docker/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/docker/docker/pkg/pools"
+	"github.com/docker/docker/pkg/system"
 )
 
 type ChangeType int
@@ -142,7 +143,7 @@ func Changes(layers []string, rw string) ([]Change, error) {
 type FileInfo struct {
 	parent     *FileInfo
 	name       string
-	stat       *system.Stat
+	stat       *system.Stat_t
 	children   map[string]*FileInfo
 	capability []byte
 	added      bool
@@ -175,7 +176,7 @@ func (info *FileInfo) path() string {
 }
 
 func (info *FileInfo) isDir() bool {
-	return info.parent == nil || info.stat.Mode()&syscall.S_IFDIR == syscall.S_IFDIR
+	return info.parent == nil || info.stat.Mode()&syscall.S_IFDIR != 0
 }
 
 func (info *FileInfo) addChanges(oldInfo *FileInfo, changes *[]Change) {
@@ -219,8 +220,8 @@ func (info *FileInfo) addChanges(oldInfo *FileInfo, changes *[]Change) {
 				oldStat.Gid() != newStat.Gid() ||
 				oldStat.Rdev() != newStat.Rdev() ||
 				// Don't look at size for dirs, its not a good measure of change
-				(oldStat.Size() != newStat.Size() && oldStat.Mode()&syscall.S_IFDIR != syscall.S_IFDIR) ||
-				!sameFsTimeSpec(oldStat.Mtim(), newStat.Mtim()) ||
+				(oldStat.Mode()&syscall.S_IFDIR != syscall.S_IFDIR &&
+					(!sameFsTimeSpec(oldStat.Mtim(), newStat.Mtim()) || (oldStat.Size() != newStat.Size()))) ||
 				bytes.Compare(oldChild.capability, newChild.capability) != 0 {
 				change := Change{
 					Path: newChild.path(),
@@ -400,22 +401,22 @@ func ExportChanges(dir string, changes []Change) (Archive, error) {
 					ChangeTime: timestamp,
 				}
 				if err := ta.TarWriter.WriteHeader(hdr); err != nil {
-					log.Debugf("Can't write whiteout header: %s", err)
+					logrus.Debugf("Can't write whiteout header: %s", err)
 				}
 			} else {
 				path := filepath.Join(dir, change.Path)
 				if err := ta.addTarFile(path, change.Path[1:]); err != nil {
-					log.Debugf("Can't add file %s to tar: %s", path, err)
+					logrus.Debugf("Can't add file %s to tar: %s", path, err)
 				}
 			}
 		}
 
 		// Make sure to check the error on Close.
 		if err := ta.TarWriter.Close(); err != nil {
-			log.Debugf("Can't close layer: %s", err)
+			logrus.Debugf("Can't close layer: %s", err)
 		}
 		if err := writer.Close(); err != nil {
-			log.Debugf("failed close Changes writer: %s", err)
+			logrus.Debugf("failed close Changes writer: %s", err)
 		}
 	}()
 	return reader, nil

@@ -1,11 +1,6 @@
 package remote
 
 import (
-	//"bytes"
-	//"io/ioutil"
-	//"net/http"
-	//"strings"
-
 	"testing"
 	"time"
 
@@ -13,11 +8,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/aws"
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/s3"
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/testutil"
-	. "github.com/dogestry/dogestry/Godeps/_workspace/src/gopkg.in/check.v1"
+	"github.com/crowdmob/goamz/aws"
+	"github.com/crowdmob/goamz/s3"
+	"github.com/crowdmob/goamz/testutil"
 	"github.com/dogestry/dogestry/config"
+	. "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {
@@ -33,15 +28,6 @@ var _ = Suite(&S{})
 
 var testServer = testutil.NewHTTPServer()
 
-var baseConfig = RemoteConfig{
-	Config: config.Config{
-		S3: config.S3Config{
-			Access_Key_Id: "abc",
-			Secret_Key:    "123",
-		},
-	},
-}
-
 func (s *S) SetUpSuite(c *C) {
 	testServer.Start()
 
@@ -50,10 +36,15 @@ func (s *S) SetUpSuite(c *C) {
 
 	tempDir, err := ioutil.TempDir("", "dogestry-test")
 	if err != nil {
-		c.Fatalf("couldn't get tempdir: %s", err)
+		c.Fatalf("couldn't get tempdir. Error: %s", err)
 	}
 
 	s.TempDir = tempDir
+
+	baseConfig, err := config.NewConfig()
+	if err != nil {
+		c.Fatalf("couldn't initialize config. Error: %s", err)
+	}
 
 	s.remote = &S3Remote{
 		config:     baseConfig,

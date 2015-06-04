@@ -14,11 +14,13 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 
-	docker "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/fsouza/go-dockerclient"
-	homedir "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/mitchellh/go-homedir"
+	"github.com/cheggaaa/pb"
 	"github.com/dogestry/dogestry/config"
 	"github.com/dogestry/dogestry/remote"
+	docker "github.com/fsouza/go-dockerclient"
+	homedir "github.com/mitchellh/go-homedir"
 )
 
 func newDockerClient(host string) (*docker.Client, error) {
@@ -62,7 +64,7 @@ func NewDogestryCli(cfg config.Config, hosts []string) (*DogestryCli, error) {
 	dogestryCli := &DogestryCli{
 		Config:     cfg,
 		err:        os.Stderr,
-		DockerHost: cfg.GetDockerHost(),
+		DockerHost: cfg.Docker.Connection,
 		PullHosts:  hosts,
 	}
 
@@ -297,6 +299,22 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 		err  error
 	}
 
+	type placeboProgressBar struct {
+		count int
+		bar   *pb.ProgressBar
+	}
+
+	progressBar := &placeboProgressBar{1000, pb.StartNew(1000)}
+	progressBar.bar.ShowCounters = false
+
+	// Starts the placebo progress bar
+	go func(progressBar *placeboProgressBar) {
+		for {
+			progressBar.bar.Increment()
+			time.Sleep(time.Second)
+		}
+	}(progressBar)
+
 	tupleCh := make(chan hostErrTuple)
 
 	for i, client := range cli.PullClients {
@@ -319,7 +337,6 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 				return
 			}
 
-			fmt.Printf("Loading image to: %v\n", host)
 			err = client.LoadImage(docker.LoadImageOptions{InputStream: stdout})
 			if err != nil {
 				tupleCh <- hostErrTuple{host, err}

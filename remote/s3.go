@@ -1,61 +1,66 @@
 package remote
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/aws"
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/crowdmob/goamz/s3"
-	docker "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/fsouza/go-dockerclient"
+	"github.com/crowdmob/goamz/aws"
+	"github.com/crowdmob/goamz/s3"
+	"github.com/dogestry/dogestry/config"
 	"github.com/dogestry/dogestry/utils"
+	docker "github.com/fsouza/go-dockerclient"
+	"github.com/rlmcpherson/s3gof3r"
 )
 
+func NewS3Remote(config config.Config) (*S3Remote, error) {
+	s3, err := newS3Client(config)
+	if err != nil {
+		return &S3Remote{}, err
+	}
+
+	s3gof3rKeys := s3gof3r.Keys{AccessKey: config.AWS.AccessKeyID, SecretKey: config.AWS.SecretAccessKey}
+
+	return &S3Remote{
+		config:               config,
+		BucketName:           config.AWS.S3URL.Host,
+		client:               s3,
+		uploadDownloadClient: s3gof3r.New("", s3gof3rKeys),
+	}, nil
+}
+
 type S3Remote struct {
-	config     RemoteConfig
-	BucketName string
-	Bucket     *s3.Bucket
-	client     *s3.S3
+	config               config.Config
+	BucketName           string
+	Bucket               *s3.Bucket
+	client               *s3.S3
+	uploadDownloadClient *s3gof3r.S3
 }
 
 var (
 	S3DefaultRegion = "us-east-1"
 )
 
-func NewS3Remote(config RemoteConfig) (*S3Remote, error) {
-	s3, err := newS3Client(config)
-	if err != nil {
-		return &S3Remote{}, err
-	}
-
-	url := config.Url
-
-	return &S3Remote{
-		config:     config,
-		BucketName: url.Host,
-		client:     s3,
-	}, nil
-}
-
 // create a new s3 client from the url
-func newS3Client(config RemoteConfig) (*s3.S3, error) {
-	auth, err := getS3Auth(config)
+func newS3Client(config config.Config) (*s3.S3, error) {
+	auth, err := aws.GetAuth(config.AWS.AccessKeyID, config.AWS.SecretAccessKey, "", time.Now())
 	if err != nil {
 		return &s3.S3{}, err
 	}
 
 	var regionName string
-	regQuery := config.Url.Query()["region"]
+
+	regQuery := config.AWS.S3URL.Query()["region"]
+
 	if len(regQuery) > 0 && regQuery[0] != "" {
 		regionName = regQuery[0]
 	} else {
-		// TODO get default region from config
 		regionName = S3DefaultRegion
 	}
 
@@ -64,14 +69,9 @@ func newS3Client(config RemoteConfig) (*s3.S3, error) {
 	return s3.New(auth, region), nil
 }
 
-// determine the s3 auth from various sources
-func getS3Auth(config RemoteConfig) (aws.Auth, error) {
-	s3config := config.Config.S3
-	return aws.GetAuth(s3config.Access_Key_Id, s3config.Secret_Key, "", time.Now())
-}
-
 func (remote *S3Remote) Validate() error {
 	bucket := remote.getBucket()
+
 	_, err := bucket.List("", "", "", 1)
 	if err != nil {
 		return fmt.Errorf("%s unable to ping s3 bucket: %s", remote.Desc(), err)
@@ -111,7 +111,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 	}
 
 	if len(keysToPush) == 0 {
-		fmt.Println("Nothing to push")
+		log.Println("There are no files to push")
 		return nil
 	}
 
@@ -121,12 +121,13 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 	}
 
 	putFileErrChan := make(chan putFileResult)
-	putFileErrMap := make(map[string]error)
 	putFilesChan := makeFilesChan(keysToPush)
 
-	numGoroutines := 100
+	defer close(putFileErrChan)
 
-	fmt.Println("Pushing keys to S3 remote")
+	numGoroutines := 25
+
+	println("Pushing files to S3 remote:")
 	for i := 0; i < numGoroutines; i++ {
 		go func() {
 			for putFile := range putFilesChan {
@@ -136,7 +137,8 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 					putFileErrChan <- putFileResult{putFile.Key, putFileErr}
 					return
 				}
-				putFileErrChan <- putFileResult{"", nil}
+
+				putFileErrChan <- putFileResult{}
 			}
 		}()
 	}
@@ -144,17 +146,12 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 	for i := 0; i < len(keysToPush); i++ {
 		p := <-putFileErrChan
 		if p.err != nil {
-			putFileErrMap[p.host] = p.err
+			log.Printf("error when uploading to S3: %v", p.err)
+			return fmt.Errorf("Error when uploading to S3: %v", p.err)
 		}
 	}
-	close(putFileErrChan)
 
-	if len(putFileErrMap) > 0 {
-		fmt.Printf("Errors during Push: %v\n", putFileErrMap)
-		err = fmt.Errorf("error uploading to S3")
-	}
-
-	return err
+	return nil
 }
 
 func (remote *S3Remote) PullImageId(id ID, dst string) error {
@@ -229,10 +226,12 @@ func (remote *S3Remote) ParseImagePath(path string, prefix string) (repo, tag st
 	return ParseImagePath(path, prefix)
 }
 
-// get the configured bucket
 func (remote *S3Remote) getBucket() *s3.Bucket {
-	// memoise?
 	return remote.client.Bucket(remote.BucketName)
+}
+
+func (remote *S3Remote) getUploadDownloadBucket() *s3gof3r.Bucket {
+	return remote.uploadDownloadClient.Bucket(remote.config.AWS.S3URL.Host)
 }
 
 type keyDef struct {
@@ -362,20 +361,11 @@ func (remote *S3Remote) localKeys(root string) (keys, error) {
 		return nil
 	})
 
-	// XXX hmmm
 	if err != nil {
-		return localKeys, nil
+		return localKeys, err
 	}
 
 	return localKeys, nil
-}
-
-type progress struct {
-	worker    int
-	size      int64
-	totalSize int64
-	index     int
-	err       error
 }
 
 // put a file with key from imageRoot to the s3 bucket
@@ -395,12 +385,19 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 
 	progressReader := utils.NewProgressReader(f, finfo.Size(), src)
 
-	err = remote.getBucket().PutReader(dstKey, progressReader, finfo.Size(), "application/octet-stream", s3.Private, s3.Options{})
+	// Open a PutWriter for actual file upload
+	w, err := remote.getUploadDownloadBucket().PutWriter(dstKey, nil, nil)
 	if err != nil {
 		return err
 	}
+	if _, err = io.Copy(w, progressReader); err != nil { // Copy to S3
+		return err
+	}
+	if err = w.Close(); err != nil {
+		return err
+	}
 
-	return remote.getBucket().Put(dstKey+".sum", []byte(key.Sum()), "text/plain", s3.Private, s3.Options{})
+	return nil
 }
 
 // get files from the s3 bucket to a local path, relative to rootKey
@@ -446,7 +443,7 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
 	close(tupleCh)
 
 	if len(getFilesErrMap) > 0 {
-		fmt.Printf("Errors during getFiles: %v\n", getFilesErrMap)
+		log.Printf("Errors during getFiles: %v", getFilesErrMap)
 		return fmt.Errorf("error downloading files from S3")
 	}
 
@@ -455,16 +452,13 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
 
 // get a single file from the s3 bucket
 func (remote *S3Remote) getFile(dst string, key *keyDef) error {
-	fmt.Printf("Pulling key %s (%s)\n", key.key, utils.HumanSize(key.s3Key.Size))
+	log.Printf("Pulling key %s (%s)\n", key.key, utils.HumanSize(key.s3Key.Size))
 
-	srcKey := remote.remoteKey(key.key)
-
-	from, err := remote.getBucket().GetReader(srcKey)
+	from, _, err := remote.getUploadDownloadBucket().GetReader(key.key, nil)
 	if err != nil {
 		return err
 	}
 	defer from.Close()
-	bufFrom := bufio.NewReader(from)
 
 	if err := os.MkdirAll(filepath.Dir(dst), 0700); err != nil {
 		return err
@@ -475,15 +469,12 @@ func (remote *S3Remote) getFile(dst string, key *keyDef) error {
 		return err
 	}
 
-	// TODO add progress reader
-	progressReaderFrom := utils.NewProgressReader(bufFrom, key.s3Key.Size, key.key)
+	progressReader := utils.NewProgressReader(from, key.s3Key.Size, key.key)
 
-	_, err = io.Copy(to, progressReaderFrom)
+	_, err = io.Copy(to, progressReader)
 	if err != nil {
 		return err
 	}
-
-	// TODO validate against sum
 
 	return nil
 }
@@ -512,7 +503,7 @@ func (remote *S3Remote) List() (images []Image, err error) {
 	for true {
 		resp, err := bucket.List("repositories/", "", nextMarker, 1000)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s unable to list images: %s", remote.Desc(), err)
+			log.Printf("%s unable to list images: %s", remote.Desc(), err)
 			return images, err
 		}
 
@@ -531,7 +522,7 @@ func (remote *S3Remote) List() (images []Image, err error) {
 		}
 		repo, tag := remote.ParseImagePath(k.Key, "repositories/")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error splitting repository key")
+			log.Printf("error splitting S3 key: repositories/")
 			return images, err
 		}
 

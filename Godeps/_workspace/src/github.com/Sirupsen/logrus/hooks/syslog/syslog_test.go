@@ -1,7 +1,7 @@
 package logrus_syslog
 
 import (
-	"github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"log/syslog"
 	"testing"
 )

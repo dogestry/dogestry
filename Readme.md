@@ -8,13 +8,14 @@ Simple CLI app for storing Docker image on Amazon S3.
 
 * AWS account with at least one S3 bucket
 * Go 1.4 or higher (*development only*)
+* [github.com/tools/godep](https://github.com/tools/godep) (*development only*)
 * Docker 1.4 or higher
 
 ## Installation
 
 If you just want to *run* Dogestry, get the [binary release](https://github.com/dogestry/dogestry/releases) that works for your platform. It's a statically linked binary: there are no dependencies. Uncompress it and run it!
 
-If you prefer to build it yourself, clone the repo and `go get ./... && go build`
+If you prefer to build it yourself, clone the repo and `godep go build`
 
 ## Usage
 
@@ -37,24 +38,24 @@ By default dogestry looks for config file in `./dogestry.cfg`.
 
 Push the `hipache` image to the S3 bucket `ops-goodies` located in `us-west-2`:
 ```
-dogestry push s3://ops-goodies/?region=us-west-2 hipache
+dogestry push s3://ops-goodies/ hipache
 ```
 
 Push the `hipache` image to the S3 bucket `ops-goodies` located in `us-west-2` with tag `latest`:
 ```
-dogestry push s3://ops-goodies/?region=us-west-2 hipache:latest
+dogestry push s3://ops-goodies/ hipache:latest
 ```
 
 ### Pull
 
 Pull the `hipache` image and tag from S3 bucket `ops-goodies`:
 ```
-dogestry pull s3://ops-goodies/?region=us-west-2 hipache
+dogestry pull s3://ops-goodies/ hipache
 ```
 
 Pull the `hipache` image and tag from S3 bucket `ops-goodies` with tag `latest`:
 ```
-dogestry pull s3://ops-goodies/?region=us-west-2 hipache:latest
+dogestry pull s3://ops-goodies/ hipache:latest
 ```
 
 If you want to pull an image from S3 to multiple hosts, you can use the `-pullhosts` option.

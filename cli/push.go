@@ -4,14 +4,15 @@ import (
 	"archive/tar"
 	"encoding/json"
 	"fmt"
-	docker "github.com/dogestry/dogestry/Godeps/_workspace/src/github.com/fsouza/go-dockerclient"
-	"github.com/dogestry/dogestry/remote"
-	"github.com/dogestry/dogestry/utils"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/dogestry/dogestry/remote"
+	"github.com/dogestry/dogestry/utils"
+	docker "github.com/fsouza/go-dockerclient"
 )
 
 const PushHelpMessage string = `  Push IMAGE from docker to REMOTE.
@@ -36,7 +37,7 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 		os.Exit(2)
 	}
 
-	remoteDef := pushFlags.Arg(0)
+	S3URL := pushFlags.Arg(0)
 	image := pushFlags.Arg(1)
 
 	imageRoot, err := cli.WorkDir(image)
@@ -44,7 +45,9 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 		return err
 	}
 
-	remote, err := remote.NewRemote(remoteDef, cli.Config)
+	cli.Config.SetS3URL(S3URL)
+
+	remote, err := remote.NewRemote(cli.Config)
 	if err != nil {
 		return err
 	}
@@ -57,9 +60,11 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 	}
 
 	if err := remote.Push(image, imageRoot); err != nil {
+		fmt.Printf(`{"Status":"error", "Message": "%v"}`+"\n", err.Error())
 		return err
 	}
 
+	fmt.Println(`{"Status":"ok"}`)
 	return nil
 }
 

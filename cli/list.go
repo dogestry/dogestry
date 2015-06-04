@@ -29,12 +29,14 @@ func (cli *DogestryCli) CmdList(args ...string) error {
 		os.Exit(2)
 	}
 
-	remoteDef := listFlags.Arg(0)
+	S3URL := listFlags.Arg(0)
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
 	defer w.Flush()
 
-	r, err := remote.NewRemote(remoteDef, cli.Config)
+	cli.Config.SetS3URL(S3URL)
+
+	r, err := remote.NewRemote(cli.Config)
 	if err != nil {
 		return err
 	}
