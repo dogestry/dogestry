@@ -127,7 +127,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 
 	numGoroutines := 25
 
-	log.Println("Pushing files to S3 remote")
+	println("Pushing files to S3 remote:")
 	for i := 0; i < numGoroutines; i++ {
 		go func() {
 			for putFile := range putFilesChan {
