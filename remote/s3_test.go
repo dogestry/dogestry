@@ -36,12 +36,15 @@ func (s *S) SetUpSuite(c *C) {
 
 	tempDir, err := ioutil.TempDir("", "dogestry-test")
 	if err != nil {
-		c.Fatalf("couldn't get tempdir: %s", err)
+		c.Fatalf("couldn't get tempdir. Error: %s", err)
 	}
 
 	s.TempDir = tempDir
 
-	baseConfig := config.NewConfig()
+	baseConfig, err := config.NewConfig()
+	if err != nil {
+		c.Fatalf("couldn't initialize config. Error: %s", err)
+	}
 
 	s.remote = &S3Remote{
 		config:     baseConfig,
