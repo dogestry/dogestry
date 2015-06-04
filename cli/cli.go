@@ -14,7 +14,9 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 
+	"github.com/cheggaaa/pb"
 	"github.com/dogestry/dogestry/config"
 	"github.com/dogestry/dogestry/remote"
 	docker "github.com/fsouza/go-dockerclient"
@@ -297,10 +299,27 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 		err  error
 	}
 
+	type placeboProgressBar struct {
+		count int
+		bar   *pb.ProgressBar
+	}
+
 	tupleCh := make(chan hostErrTuple)
 
 	for i, client := range cli.PullClients {
 		host := cli.PullHosts[i]
+
+		progressBar := &placeboProgressBar{1000, pb.StartNew(1000)}
+		progressBar.bar.ShowCounters = false
+
+		// Starts the placebo progress bar
+		go func(host string, progressBar *placeboProgressBar) {
+			fmt.Printf("Host: %v ", host)
+			for {
+				progressBar.bar.Increment()
+				time.Sleep(time.Second)
+			}
+		}(host, progressBar)
 
 		go func(client *docker.Client, host string) {
 			cmd := exec.Command("tar", "cvf", "-", "-C", imageRoot, ".")
@@ -319,7 +338,6 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 				return
 			}
 
-			fmt.Printf("Loading image to: %v\n", host)
 			err = client.LoadImage(docker.LoadImageOptions{InputStream: stdout})
 			if err != nil {
 				tupleCh <- hostErrTuple{host, err}
