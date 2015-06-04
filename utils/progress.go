@@ -11,7 +11,7 @@ var progressLogger = log.New(os.Stdout, "", 0)
 
 var defaultInterval int64 = 1024 * 1024 * 10 // 10 MB
 
-type progressReader struct {
+type ProgressReader struct {
 	r              io.Reader
 	TotalSize      int64
 	Current        int64
@@ -21,7 +21,7 @@ type progressReader struct {
 }
 
 func NewProgressReader(r io.Reader, size int64, fileName string) io.Reader {
-	return &progressReader{r, size, 0, 0, defaultInterval, fileName}
+	return &ProgressReader{r, size, 0, 0, defaultInterval, fileName}
 }
 
 func printProgress(progress, total int64, fileName string) {
@@ -29,7 +29,7 @@ func printProgress(progress, total int64, fileName string) {
 	progressLogger.Printf("  %-17s : %s\n", calc, fileName)
 }
 
-func (p *progressReader) Read(in []byte) (n int, err error) {
+func (p *ProgressReader) Read(in []byte) (n int, err error) {
 	n, err = p.r.Read(in)
 	p.Current += int64(n)
 

@@ -368,14 +368,6 @@ func (remote *S3Remote) localKeys(root string) (keys, error) {
 	return localKeys, nil
 }
 
-type progress struct {
-	worker    int
-	size      int64
-	totalSize int64
-	index     int
-	err       error
-}
-
 // put a file with key from imageRoot to the s3 bucket
 func (remote *S3Remote) putFile(src string, key *keyDef) error {
 	dstKey := remote.remoteKey(key.key)
@@ -394,7 +386,7 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 	progressReader := utils.NewProgressReader(f, finfo.Size(), src)
 
 	// Open a PutWriter for actual file upload
-	w, err := remote.getUploadDownloadBucket().PutWriter(f.Name(), nil, nil)
+	w, err := remote.getUploadDownloadBucket().PutWriter(dstKey, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -402,18 +394,6 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 		return err
 	}
 	if err = w.Close(); err != nil {
-		return err
-	}
-
-	// Open a second PutWriter for checksum upload.
-	w2, err := remote.getUploadDownloadBucket().PutWriter(dstKey+".sum", nil, nil)
-	if err != nil {
-		return err
-	}
-	if _, err = io.Copy(w2, strings.NewReader(key.Sum())); err != nil { // Copy to S3
-		return err
-	}
-	if err = w2.Close(); err != nil {
 		return err
 	}
 
@@ -489,9 +469,9 @@ func (remote *S3Remote) getFile(dst string, key *keyDef) error {
 		return err
 	}
 
-	progressReaderFrom := utils.NewProgressReader(from, key.s3Key.Size, key.key)
+	progressReader := utils.NewProgressReader(from, key.s3Key.Size, key.key)
 
-	_, err = io.Copy(to, progressReaderFrom)
+	_, err = io.Copy(to, progressReader)
 	if err != nil {
 		return err
 	}
