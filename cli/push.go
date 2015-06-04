@@ -60,9 +60,11 @@ func (cli *DogestryCli) CmdPush(args ...string) error {
 	}
 
 	if err := remote.Push(image, imageRoot); err != nil {
+		fmt.Printf(`{"Status":"error", "Message": "%v"}`+"\n", err.Error())
 		return err
 	}
 
+	fmt.Println(`{"Status":"ok"}`)
 	return nil
 }
 
