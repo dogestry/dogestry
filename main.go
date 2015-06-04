@@ -62,7 +62,12 @@ func main() {
 
 	args := flag.Args()
 
-	dogestryCli, err := cli.NewDogestryCli(config.NewConfig(), flPullHosts)
+	cfg, err := config.NewConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dogestryCli, err := cli.NewDogestryCli(cfg, flPullHosts)
 	if err != nil {
 		log.Fatal(err)
 	}
