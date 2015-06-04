@@ -304,21 +304,21 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 		bar   *pb.ProgressBar
 	}
 
+	progressBar := &placeboProgressBar{1000, pb.StartNew(1000)}
+	progressBar.bar.ShowCounters = false
+
+	// Starts the placebo progress bar
+	go func(progressBar *placeboProgressBar) {
+		for {
+			progressBar.bar.Increment()
+			time.Sleep(time.Second)
+		}
+	}(progressBar)
+
 	tupleCh := make(chan hostErrTuple)
 
 	for i, client := range cli.PullClients {
 		host := cli.PullHosts[i]
-
-		progressBar := &placeboProgressBar{1000, pb.StartNew(1000)}
-		progressBar.bar.ShowCounters = false
-
-		// Starts the placebo progress bar
-		go func(progressBar *placeboProgressBar) {
-			for {
-				progressBar.bar.Increment()
-				time.Sleep(time.Second)
-			}
-		}(progressBar)
 
 		go func(client *docker.Client, host string) {
 			cmd := exec.Command("tar", "cvf", "-", "-C", imageRoot, ".")
