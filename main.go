@@ -10,6 +10,7 @@ import (
 
 	"github.com/dogestry/dogestry/cli"
 	"github.com/dogestry/dogestry/config"
+	"github.com/dogestry/dogestry/utils"
 )
 
 type pullHosts []string
@@ -29,6 +30,7 @@ var (
 	flConfigFile string
 	flVersion    bool
 	flPullHosts  pullHosts
+	flLockFile   string
 )
 
 func init() {
@@ -41,6 +43,7 @@ func init() {
 	flag.BoolVar(&flVersion, "version", versionDefault, versionUsage)
 	flag.BoolVar(&flVersion, "v", versionDefault, versionUsage+" (short)")
 	flag.Var(&flPullHosts, "pullhosts", "a comma-separated list of docker hosts where the image will be pulled")
+	flag.StringVar(&flLockFile, "lockfile", "", "lockfile to use while executing command, prevents parallel executions")
 }
 
 func main() {
@@ -72,12 +75,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = dogestryCli.RunCmd(args...)
-
-	if err == nil {
-		dogestryCli.Cleanup()
+	if flLockFile != "" {
+		utils.LockByFile(dogestryCli, args, flLockFile)
 	} else {
-		dogestryCli.Cleanup()
-		log.Fatal(err)
+		err = dogestryCli.RunCmd(args...)
+
+		if err == nil {
+			dogestryCli.Cleanup()
+		} else {
+			dogestryCli.Cleanup()
+			log.Fatal(err)
+		}
 	}
 }
