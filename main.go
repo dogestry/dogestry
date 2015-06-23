@@ -27,10 +27,11 @@ func (h *pullHosts) Set(value string) error {
 }
 
 var (
-	flConfigFile string
-	flVersion    bool
-	flPullHosts  pullHosts
-	flLockFile   string
+	flConfigFile     string
+	flVersion        bool
+	flPullHosts      pullHosts
+	flLockFile       string
+	flUseMetaService bool
 )
 
 func init() {
@@ -44,6 +45,7 @@ func init() {
 	flag.BoolVar(&flVersion, "v", versionDefault, versionUsage+" (short)")
 	flag.Var(&flPullHosts, "pullhosts", "a comma-separated list of docker hosts where the image will be pulled")
 	flag.StringVar(&flLockFile, "lockfile", "", "lockfile to use while executing command, prevents parallel executions")
+	flag.BoolVar(&flUseMetaService, "use-metaservice", false, "use tha AWS metadata service to get credentials")
 }
 
 func main() {
@@ -65,7 +67,7 @@ func main() {
 
 	args := flag.Args()
 
-	cfg, err := config.NewConfig()
+	cfg, err := config.NewConfig(flUseMetaService)
 	if err != nil {
 		log.Fatal(err)
 	}

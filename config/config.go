@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-func NewConfig() (Config, error) {
+func NewConfig(useMetaService bool) (Config, error) {
 	c := Config{}
 	c.AWS.AccessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
 	if c.AWS.AccessKeyID == "" {
@@ -24,7 +24,7 @@ func NewConfig() (Config, error) {
 		c.Docker.Connection = "unix:///var/run/docker.sock"
 	}
 
-	if c.AWS.AccessKeyID == "" || c.AWS.SecretAccessKey == "" {
+	if !useMetaService && (c.AWS.AccessKeyID == "" || c.AWS.SecretAccessKey == "") {
 		return c, errors.New("AWS_ACCESS_KEY_ID/AWS_ACCESS_KEY or AWS_SECRET_ACCESS_KEY/AWS_SECRET_KEY are missing.")
 	}
 
