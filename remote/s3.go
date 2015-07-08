@@ -126,7 +126,7 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 	defer close(putFileErrChan)
 
 	numGoroutines := 25
-	goroutineQuitChans := make([]chan bool, 25)
+	goroutineQuitChans := make([]chan bool, numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
 		goroutineQuitChans[i] = make(chan bool)
 	}
@@ -155,6 +155,11 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 	for i := 0; i < len(keysToPush); i++ {
 		p := <-putFileErrChan
 		if p.err != nil {
+			// Close all running goroutines
+			for i := 0; i < numGoroutines; i++ {
+				goroutineQuitChans[i] <- true
+			}
+
 			log.Printf("error when uploading to S3: %v", p.err)
 			return fmt.Errorf("Error when uploading to S3: %v", p.err)
 		}
