@@ -387,35 +387,16 @@ func (cli *DogestryCli) makeDownloadMap(r remote.Remote, id remote.ID, imageRoot
 func (cli *DogestryCli) downloadImages(r remote.Remote, downloadMap DownloadMap, imageRoot string) error {
 	pullImagesErrMap := make(map[string]error)
 
-	type pathErrTuple struct {
-		path string
-		err  error
-	}
-
-	tupleCh := make(chan pathErrTuple)
-
 	for id, _ := range downloadMap {
-		go func(imageRoot string, id remote.ID) {
-			downloadPath := filepath.Join(imageRoot, string(id))
+		downloadPath := filepath.Join(imageRoot, string(id))
 
-			fmt.Printf("Pulling image id '%s' to: %v\n", id.Short(), downloadPath)
+		fmt.Printf("Pulling image id '%s' to: %v\n", id.Short(), downloadPath)
 
-			err := r.PullImageId(id, downloadPath)
-			if err != nil {
-				tupleCh <- pathErrTuple{downloadPath, err}
-				return
-			}
-			tupleCh <- pathErrTuple{"", nil}
-		}(imageRoot, id)
-	}
-
-	for range downloadMap {
-		tuple := <-tupleCh
-		if tuple.err != nil {
-			pullImagesErrMap[tuple.path] = tuple.err
+		err := r.PullImageId(id, downloadPath)
+		if err != nil {
+			pullImagesErrMap[downloadPath] = err
 		}
 	}
-	close(tupleCh)
 
 	if len(pullImagesErrMap) > 0 {
 		fmt.Printf("Errors pulling images: %v\n", pullImagesErrMap)

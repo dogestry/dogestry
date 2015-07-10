@@ -408,42 +408,20 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 // key: "images/456/json"
 // downloads to: "/tmp/rego/123/456/json"
 func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
-	getFilesErrMap := make(map[string]error)
-
-	type errTuple struct {
-		fileKey string
-		err     error
-	}
-
-	tupleCh := make(chan errTuple)
+	errMap := make(map[string]error)
 
 	for _, key := range imageKeys {
-		keyDefClone := *key
+		relKey := strings.TrimPrefix(key.key, rootKey)
+		relKey = strings.TrimPrefix(relKey, "/")
 
-		go func(dst, rootKey string, key keyDef) {
-			relKey := strings.TrimPrefix(key.key, rootKey)
-			relKey = strings.TrimPrefix(relKey, "/")
-
-			err := remote.getFile(filepath.Join(dst, relKey), &key)
-			if err != nil {
-				tupleCh <- errTuple{key.key, err}
-				return
-			}
-			tupleCh <- errTuple{"", nil}
-
-		}(dst, rootKey, keyDefClone)
-	}
-
-	for range imageKeys {
-		tuple := <-tupleCh
-		if tuple.err != nil {
-			getFilesErrMap[tuple.fileKey] = tuple.err
+		err := remote.getFile(filepath.Join(dst, relKey), key)
+		if err != nil {
+			errMap[key.key] = err
 		}
 	}
-	close(tupleCh)
 
-	if len(getFilesErrMap) > 0 {
-		log.Printf("Errors during getFiles: %v", getFilesErrMap)
+	if len(errMap) > 0 {
+		log.Printf("Errors during getFiles: %v", errMap)
 		return fmt.Errorf("error downloading files from S3")
 	}
 
