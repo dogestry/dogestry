@@ -25,7 +25,10 @@ func NewS3Remote(config config.Config) (*S3Remote, error) {
 		return &S3Remote{}, err
 	}
 
-	s3gof3rKeys := s3gof3r.Keys{AccessKey: config.AWS.AccessKeyID, SecretKey: config.AWS.SecretAccessKey}
+	s3gof3rKeys, err := getS3gof3rKeys(config)
+	if err != nil {
+		return &S3Remote{}, err
+	}
 
 	return &S3Remote{
 		config:               config,
@@ -46,6 +49,14 @@ type S3Remote struct {
 var (
 	S3DefaultRegion = "us-east-1"
 )
+
+func getS3gof3rKeys(config config.Config) (s3gof3r.Keys, error) {
+	if config.AWS.UseMetaService {
+		return s3gof3r.InstanceKeys()
+	} else {
+		return s3gof3r.Keys{AccessKey: config.AWS.AccessKeyID, SecretKey: config.AWS.SecretAccessKey}, nil
+	}
+}
 
 // create a new s3 client from the url
 func newS3Client(config config.Config) (*s3.S3, error) {
