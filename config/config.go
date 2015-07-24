@@ -24,6 +24,8 @@ func NewConfig(useMetaService bool) (Config, error) {
 		c.Docker.Connection = "unix:///var/run/docker.sock"
 	}
 
+	c.AWS.UseMetaService = useMetaService
+
 	if !useMetaService && (c.AWS.AccessKeyID == "" || c.AWS.SecretAccessKey == "") {
 		return c, errors.New("AWS_ACCESS_KEY_ID/AWS_ACCESS_KEY or AWS_SECRET_ACCESS_KEY/AWS_SECRET_KEY are missing.")
 	}
@@ -36,6 +38,7 @@ type Config struct {
 		S3URL           *url.URL
 		AccessKeyID     string
 		SecretAccessKey string
+		UseMetaService  bool
 	}
 	Docker struct {
 		Connection string
