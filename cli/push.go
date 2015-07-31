@@ -216,6 +216,7 @@ func (cli *DogestryCli) exportToFiles(image string, r remote.Remote, imageRoot s
 	imageHistory, err := cli.Client.ImageHistory(image)
 	if err != nil {
 		fmt.Printf("Error getting image history: %v\n", err)
+		return err
 	}
 
 	fmt.Println("Checking layers on remote")
