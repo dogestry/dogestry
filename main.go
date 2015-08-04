@@ -82,10 +82,9 @@ func main() {
 	} else {
 		err = dogestryCli.RunCmd(args...)
 
-		if err == nil {
-			dogestryCli.Cleanup()
-		} else {
-			dogestryCli.Cleanup()
+		dogestryCli.Cleanup()
+
+		if err != nil {
 			log.Fatal(err)
 		}
 	}

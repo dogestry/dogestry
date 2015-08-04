@@ -61,6 +61,8 @@ func newDockerClient(host string) (*docker.Client, error) {
 }
 
 func NewDogestryCli(cfg config.Config, hosts []string) (*DogestryCli, error) {
+	var err error
+
 	dogestryCli := &DogestryCli{
 		Config:     cfg,
 		err:        os.Stderr,
@@ -68,20 +70,21 @@ func NewDogestryCli(cfg config.Config, hosts []string) (*DogestryCli, error) {
 		PullHosts:  hosts,
 	}
 
-	var err error
-
 	dogestryCli.Client, err = newDockerClient(dogestryCli.DockerHost)
 	if err != nil {
 		log.Fatal(err)
+		return nil, err
 	}
 
-	if len(dogestryCli.PullHosts) > 0 {
+	if dogestryCli.PullHosts != nil && len(dogestryCli.PullHosts) > 0 {
 		var client *docker.Client
 		for _, host := range dogestryCli.PullHosts {
 			client, err = newDockerClient(host)
 			if err != nil {
 				log.Fatal(err)
+				return nil, err
 			}
+
 			dogestryCli.PullClients = append(dogestryCli.PullClients, client)
 		}
 	} else {

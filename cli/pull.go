@@ -1,8 +1,8 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
-	"os"
 
 	"github.com/dogestry/dogestry/remote"
 )
@@ -19,14 +19,14 @@ const PullHelpMessage string = `  Pull IMAGE from REMOTE and load it into docker
 
 func (cli *DogestryCli) CmdPull(args ...string) error {
 	pullFlags := cli.Subcmd("pull", "REMOTE IMAGE[:TAG]", PullHelpMessage)
+
+	// Don't return error here, this part is only relevant for CLI
 	if err := pullFlags.Parse(args); err != nil {
 		return nil
 	}
 
 	if len(pullFlags.Args()) < 2 {
-		fmt.Fprintln(cli.err, "Error: REMOTE and IMAGE not specified")
-		pullFlags.Usage()
-		os.Exit(2)
+		return errors.New("Error: REMOTE and IMAGE not specified")
 	}
 
 	S3URL := pullFlags.Arg(0)

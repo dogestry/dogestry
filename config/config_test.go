@@ -22,7 +22,11 @@ func TestNewConfig(t *testing.T) {
 		t.Error("config.Docker.Connection should not be empty.")
 	}
 
+	os.Unsetenv("AWS_ACCESS_KEY_ID")
+	os.Unsetenv("AWS_ACCESS_KEY")
 	os.Unsetenv("AWS_SECRET_ACCESS_KEY")
+	os.Unsetenv("AWS_SECRET_KEY")
+
 	c, err = NewConfig(false)
 	if err == nil || err.Error() != "AWS_ACCESS_KEY_ID/AWS_ACCESS_KEY or AWS_SECRET_ACCESS_KEY/AWS_SECRET_KEY are missing." {
 		t.Error("should return error when evn vars are not set")
