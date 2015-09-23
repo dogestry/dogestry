@@ -229,10 +229,23 @@ func (remote *S3Remote) WalkImages(id ID, walker ImageWalkFn) error {
 }
 
 func (remote *S3Remote) ImageMetadata(id ID) (docker.Image, error) {
-	jsonPath := path.Join(remote.imagePath(id), "json")
+	bucket := remote.getBucket()
 	image := docker.Image{}
+	
+	files := []string{ "json", "layer.tar", "VERSION" }
+	for i := 0; i < len(files); i++ {
+		exists, err := bucket.Exists(path.Join(remote.imagePath(id), files[i]))
+		if err != nil {
+			return image, err
+		}
+		if !exists {
+			return image, ErrNoSuchImage
+		}
+	}
+	
+	jsonPath := path.Join(remote.imagePath(id), "json")
 
-	imageJson, err := remote.getBucket().Get(jsonPath)
+	imageJson, err := bucket.Get(jsonPath)
 	if s3err, ok := err.(*s3.Error); ok && s3err.StatusCode == 404 {
 		// doesn't exist yet, deal with it
 		return image, ErrNoSuchImage
