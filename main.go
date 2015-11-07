@@ -77,6 +77,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	cli.ServeHttp("0.0.0.0:8090", dogestryCli)
+
 	if flLockFile != "" {
 		utils.LockByFile(dogestryCli, args, flLockFile)
 	} else {
