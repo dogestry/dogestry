@@ -67,7 +67,12 @@ func pullHandler(response http.ResponseWriter, req *http.Request) {
 
 	image := req.URL.Query().Get("fromImage")
 
-	response.Write(statusJSON(fmt.Sprintf("Pulling %s from S3", image)))
+	response.Write(statusJSON(fmt.Sprintf("Pulling %s from S3...", image)))
+
+	// Try to flush
+	if f, ok := response.(http.Flusher); ok {
+		f.Flush()
+	}
 
 	if err := dogestryCli.CmdPull(cfg.AWS.S3URL.String(), image); err != nil {
 		fmt.Printf("Error pulling image from S3: %v\n", err.Error())

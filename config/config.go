@@ -72,6 +72,8 @@ func NewServerConfig(authHeader string) (Config, error) {
 		c.Docker.Connection = "unix:///var/run/docker.sock"
 	}
 
+	c.ServerMode = true
+
 	return c, nil
 }
 
@@ -84,6 +86,8 @@ type AuthConfig struct {
 }
 
 type Config struct {
+	ServerMode bool
+
 	AWS struct {
 		S3URL           *url.URL
 		AccessKeyID     string
