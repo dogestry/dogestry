@@ -1,7 +1,10 @@
 package config
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/url"
 	"os"
 )
@@ -31,6 +34,56 @@ func NewConfig(useMetaService bool) (Config, error) {
 	}
 
 	return c, nil
+}
+
+// Config instantiation when dogestry is ran in server mode
+func NewServerConfig(authHeader string) (Config, error) {
+	c := Config{}
+
+	data, err := base64.StdEncoding.DecodeString(authHeader)
+	if err != nil {
+		return c, fmt.Errorf("Unbale to base64 decode auth header: %v", err)
+	}
+
+	var authConfig AuthConfig
+
+	if err := json.Unmarshal(data, &authConfig); err != nil {
+		return c, fmt.Errorf("Unable to unmarshal JSON authconfig: %v", err)
+	}
+
+	if authConfig.Username == "" {
+		return c, errors.New("Missing username/AccessKeyID in auth header")
+	} else if authConfig.Password == "" {
+		return c, errors.New("Missing password/SecretAccessKey in auth header")
+	} else if authConfig.Email == "" {
+		return c, errors.New("Missing email/S3Bucket in auth header")
+	}
+
+	if err := c.SetS3URL(authConfig.Email); err != nil {
+		return c, fmt.Errorf("Unable to set S3URL: %v", err)
+	}
+
+	c.AWS.AccessKeyID = authConfig.Username
+	c.AWS.SecretAccessKey = authConfig.Password
+
+	c.Docker.Connection = os.Getenv("DOCKER_HOST")
+
+	fmt.Printf("AccessKeyID: '%v'\n", c.AWS.AccessKeyID)
+	fmt.Printf("SecretKey: '%v'\n", c.AWS.SecretAccessKey)
+
+	if c.Docker.Connection == "" {
+		c.Docker.Connection = "unix:///var/run/docker.sock"
+	}
+
+	return c, nil
+}
+
+type AuthConfig struct {
+	Username      string `json:"username,omitempty"`
+	Password      string `json:"password,omitempty"`
+	Auth          string `json:"auth"`
+	Email         string `json:"email"`
+	ServerAddress string `json:"serveraddress,omitempty"`
 }
 
 type Config struct {

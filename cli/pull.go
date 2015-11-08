@@ -20,6 +20,8 @@ const PullHelpMessage string = `  Pull IMAGE from REMOTE and load it into docker
 func (cli *DogestryCli) CmdPull(args ...string) error {
 	pullFlags := cli.Subcmd("pull", "REMOTE IMAGE[:TAG]", PullHelpMessage)
 
+	fmt.Printf("Our args: %v\n", args)
+
 	// Don't return error here, this part is only relevant for CLI
 	if err := pullFlags.Parse(args); err != nil {
 		return nil

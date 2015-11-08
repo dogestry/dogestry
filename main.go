@@ -32,6 +32,9 @@ var (
 	flPullHosts      pullHosts
 	flLockFile       string
 	flUseMetaService bool
+	flServerMode     bool
+	flServerAddress  string
+	flServerPort     int
 )
 
 func init() {
@@ -46,6 +49,9 @@ func init() {
 	flag.Var(&flPullHosts, "pullhosts", "a comma-separated list of docker hosts where the image will be pulled")
 	flag.StringVar(&flLockFile, "lockfile", "", "lockfile to use while executing command, prevents parallel executions")
 	flag.BoolVar(&flUseMetaService, "use-metaservice", false, "use tha AWS metadata service to get credentials")
+	flag.BoolVar(&flServerMode, "server", false, "run dogestry in server mode")
+	flag.StringVar(&flServerAddress, "address", "0.0.0.0", "what address to bind to when running dogestry in server mode")
+	flag.IntVar(&flServerPort, "port", 22375, "what port to bind to when running dogestry in server mode")
 }
 
 func main() {
@@ -65,29 +71,34 @@ func main() {
 		return
 	}
 
-	args := flag.Args()
+	if flServerMode {
+		fullAddress := fmt.Sprintf("%v:%v", flServerAddress, flServerPort)
 
-	cfg, err := config.NewConfig(flUseMetaService)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	dogestryCli, err := cli.NewDogestryCli(cfg, flPullHosts)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	cli.ServeHttp("0.0.0.0:8090", dogestryCli)
-
-	if flLockFile != "" {
-		utils.LockByFile(dogestryCli, args, flLockFile)
+		log.Printf("Running dogestry in server mode on '%v'", fullAddress)
+		cli.ServeHttp(fullAddress)
 	} else {
-		err = dogestryCli.RunCmd(args...)
+		args := flag.Args()
 
-		dogestryCli.Cleanup()
-
+		cfg, err := config.NewConfig(flUseMetaService)
 		if err != nil {
 			log.Fatal(err)
+		}
+
+		dogestryCli, err := cli.NewDogestryCli(cfg, flPullHosts)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if flLockFile != "" {
+			utils.LockByFile(dogestryCli, args, flLockFile)
+		} else {
+			err = dogestryCli.RunCmd(args...)
+
+			dogestryCli.Cleanup()
+
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
 }

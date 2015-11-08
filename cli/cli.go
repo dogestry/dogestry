@@ -108,6 +108,7 @@ type DogestryCli struct {
 
 func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
 	methodName := "Cmd" + strings.ToUpper(name[:1]) + strings.ToLower(name[1:])
+	fmt.Printf("Our method name: %v\n", methodName)
 	method := reflect.ValueOf(cli).MethodByName(methodName)
 	if !method.IsValid() {
 		return nil, false
@@ -117,6 +118,8 @@ func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
 
 func (cli *DogestryCli) RunCmd(args ...string) error {
 	if len(args) > 0 {
+		fmt.Printf("Seeing if method '%v' exists!\n", args[0])
+
 		method, exists := cli.getMethod(args[0])
 		if !exists {
 			fmt.Println("Error: Command not found:", args[0])

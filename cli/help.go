@@ -18,6 +18,8 @@ const HelpMessage string = `Usage: dogestry [OPTIONS] COMMAND [arg...]
      -config     Path to optional config file
      -pullhosts  A comma-separated list of docker hosts where the image will be pulled
      -lockfile   Path to optional lock file to use, prevents parallel execution
+     -server     Run dogestry in server mode
+     -address    What address & port to bind to for dogestry server mode (default: 0.0.0.0:22375)          
 
   Typical S3 Usage:
      dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <image name>
