@@ -12,16 +12,40 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func errJson(msg string) []byte {
-	problem := struct {
-		Err string `json:"error"`
-	}{
-		Err: msg,
+type JSONError struct {
+	Detail       JSONErrorDetail `json:"errorDetail"`
+	ErrorMessage string          `json:"error"`
+}
+
+type JSONErrorDetail struct {
+	Message string `json:"message"`
+}
+
+func errorJSON(msg string) []byte {
+	problem := JSONError{
+		ErrorMessage: msg,
+		Detail: JSONErrorDetail{
+			Message: msg,
+		},
 	}
 
 	// This is how we generate errors. If an error happens here, well...
 	bytes, _ := json.Marshal(problem)
+
 	return bytes
+}
+
+func statusJSON(msg string) []byte {
+	status := struct {
+		Status string `json:"status"`
+	}{
+		Status: msg,
+	}
+
+	bytes, _ := json.Marshal(status)
+
+	return bytes
+
 }
 
 func pullHandler(response http.ResponseWriter, req *http.Request) {
@@ -31,29 +55,27 @@ func pullHandler(response http.ResponseWriter, req *http.Request) {
 
 	cfg, err := config.NewServerConfig(req.Header.Get("X-Registry-Auth"))
 	if err != nil {
-		response.Write(errJson(err.Error()))
+		response.Write(errorJSON(err.Error()))
 		return
 	}
 
-	fmt.Println(cfg)
-
 	dogestryCli, err := NewDogestryCli(cfg, make([]string, 0))
 	if err != nil {
-		response.Write(errJson(err.Error()))
+		response.Write(errorJSON(err.Error()))
 		return
 	}
 
 	image := req.URL.Query().Get("fromImage")
 
-	response.Write([]byte(fmt.Sprintf(`{"status": "pulling %s from S3"}`, image)))
+	response.Write(statusJSON(fmt.Sprintf("Pulling %s from S3", image)))
 
 	if err := dogestryCli.CmdPull(cfg.AWS.S3URL.String(), image); err != nil {
-		fmt.Printf("Ran into errors: %v\n", err)
-		response.Write([]byte(`{"status": "error"}`))
+		fmt.Printf("Error pulling image from S3: %v\n", err.Error())
+		response.Write(errorJSON("Dogestry server error: " + err.Error()))
 		return
 	}
 
-	response.Write([]byte(`{"status": "done."}`))
+	response.Write(statusJSON("Done"))
 }
 
 func healthCheckHandler(response http.ResponseWriter, req *http.Request) {
@@ -65,7 +87,7 @@ func healthCheckHandler(response http.ResponseWriter, req *http.Request) {
 func rootHandler(response http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 
-	response.Write([]byte(`{"error": "Dogestry API, nothing to see here..."}`))
+	response.Write(errorJSON("Dogestry API, nothing to see here..."))
 }
 
 func ServeHttp(address string) {

@@ -68,9 +68,6 @@ func NewServerConfig(authHeader string) (Config, error) {
 
 	c.Docker.Connection = os.Getenv("DOCKER_HOST")
 
-	fmt.Printf("AccessKeyID: '%v'\n", c.AWS.AccessKeyID)
-	fmt.Printf("SecretKey: '%v'\n", c.AWS.SecretAccessKey)
-
 	if c.Docker.Connection == "" {
 		c.Docker.Connection = "unix:///var/run/docker.sock"
 	}
