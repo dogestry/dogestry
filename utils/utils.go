@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 )
 
 // HumanSize returns a human-readable approximation of a size
@@ -66,4 +67,22 @@ func Sha1File(path string) (string, error) {
 
 	io.Copy(hash, buff)
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+// Extract hostnames from a list of pullhost args
+// ie. 'tcp://some.hostname.com:2375', extract 'some.hostname.com'
+func ParseHostnames(pullHosts []string) []string {
+	parsedHosts := make([]string, 0)
+
+	re := regexp.MustCompile("^tcp://(.+):2375$")
+
+	for _, hostEntry := range pullHosts {
+		results := re.FindSubmatch([]byte(hostEntry))
+
+		if len(results) == 2 {
+			parsedHosts = append(parsedHosts, string(results[1]))
+		}
+	}
+
+	return parsedHosts
 }

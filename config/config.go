@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-func NewConfig(useMetaService bool) (Config, error) {
+func NewConfig(useMetaService bool, serverPort int) (Config, error) {
 	c := Config{}
 	c.AWS.AccessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
 	if c.AWS.AccessKeyID == "" {
@@ -32,6 +32,8 @@ func NewConfig(useMetaService bool) (Config, error) {
 	if !useMetaService && (c.AWS.AccessKeyID == "" || c.AWS.SecretAccessKey == "") {
 		return c, errors.New("AWS_ACCESS_KEY_ID/AWS_ACCESS_KEY or AWS_SECRET_ACCESS_KEY/AWS_SECRET_KEY are missing.")
 	}
+
+	c.ServerPort = serverPort
 
 	return c, nil
 }
@@ -87,6 +89,7 @@ type AuthConfig struct {
 
 type Config struct {
 	ServerMode bool
+	ServerPort int
 
 	AWS struct {
 		S3URL           *url.URL

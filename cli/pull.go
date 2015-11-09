@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/dogestry/dogestry/remote"
+	"github.com/dogestry/dogestry/utils"
 )
 
 const PullHelpMessage string = `  Pull IMAGE from REMOTE and load it into docker.
@@ -27,6 +28,20 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 
 	if len(pullFlags.Args()) < 2 {
 		return errors.New("Error: REMOTE and IMAGE not specified")
+	}
+
+	// Extract hostname from pullhosts args
+	hosts := utils.ParseHostnames(cli.PullHosts)
+
+	fmt.Printf("Found the following hosts: %v\n", hosts)
+
+	regularDownload := make(map[string]bool, 0)
+
+	// Check which hosts are running the dogestry server
+	for _, host := range hosts {
+		if utils.DogestryServerCheck(host, cli.Config.ServerPort) {
+			regularDownload[host] = true
+		}
 	}
 
 	S3URL := pullFlags.Arg(0)

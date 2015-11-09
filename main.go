@@ -79,7 +79,7 @@ func main() {
 	} else {
 		args := flag.Args()
 
-		cfg, err := config.NewConfig(flUseMetaService)
+		cfg, err := config.NewConfig(flUseMetaService, flServerPort)
 		if err != nil {
 			log.Fatal(err)
 		}
