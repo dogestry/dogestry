@@ -7,8 +7,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"regexp"
+	"time"
 )
 
 // HumanSize returns a human-readable approximation of a size
@@ -85,4 +87,16 @@ func ParseHostnames(pullHosts []string) []string {
 	}
 
 	return parsedHosts
+}
+
+// See if remote Dogestry port is open
+func DogestryServerCheck(host string, port int, timeout time.Duration) bool {
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%v:%v", host, port), timeout)
+	if err != nil {
+		return false
+	}
+
+	conn.Close()
+
+	return true
 }

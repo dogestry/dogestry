@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/dogestry/dogestry/remote"
 	"github.com/dogestry/dogestry/utils"
@@ -36,11 +37,15 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 	fmt.Printf("Found the following hosts: %v\n", hosts)
 
 	regularDownload := make(map[string]bool, 0)
+	checkTimeout := time.Duration(500) * time.Millisecond
 
 	// Check which hosts are running the dogestry server
 	for _, host := range hosts {
-		if utils.DogestryServerCheck(host, cli.Config.ServerPort) {
+		if utils.DogestryServerCheck(host, cli.Config.ServerPort, checkTimeout) {
+			fmt.Println("Dogestry server is running on:", host)
 			regularDownload[host] = true
+		} else {
+			regularDownload[host] = false
 		}
 	}
 
