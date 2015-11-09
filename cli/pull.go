@@ -59,7 +59,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 		fmt.Println("Detected dogestry server on all pullhosts!")
 		return cli.DogestryPull(hosts, image)
 	} else {
-		fmt.Println("Performing regular dogestry pull!")
+		fmt.Println("Performing regular dogestry pull (this may take a while)!")
 		return cli.RegularPull(image)
 	}
 }
@@ -71,38 +71,82 @@ func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
 		return headerErr
 	}
 
-	// Craft url
-	fullURL := fmt.Sprintf("http://%v:%v/9001/images/create?fromImage=%v", hosts[0],
-		cli.Config.ServerPort, url.QueryEscape(image))
-
-	fmt.Printf("Generated the following URL: %v", fullURL)
-
-	// POST
-	req, requestErr := http.NewRequest("POST", fullURL, nil)
-	if requestErr != nil {
-		fmt.Println("Error when generating new POST request:", requestErr)
-		return requestErr
+	type hostErrTuple struct {
+		server string
+		err    error
 	}
 
-	req.Header.Set("X-Registry-Auth", authHeader)
-	req.Header.Set("Content-Type", "application/json")
+	tupleChan := make(chan hostErrTuple)
 
-	client := &http.Client{}
+	for _, host := range hosts {
+		fmt.Printf("Starting image pull via dogestry server on host %v...\n", host)
 
-	resp, httpErr := client.Do(req)
-	if httpErr != nil {
-		fmt.Println("Error when POST'ing to remote dogestry:", httpErr)
-		return httpErr
+		// Craft url
+		fullURL := fmt.Sprintf("http://%v:%v/9001/images/create?fromImage=%v", host,
+			cli.Config.ServerPort, url.QueryEscape(image))
+
+		go func(host string, header string, tupleChan chan hostErrTuple) {
+			// Request dogestry server to pull image
+			req, requestErr := http.NewRequest("POST", fullURL, nil)
+			if requestErr != nil {
+				tupleChan <- hostErrTuple{
+					server: host,
+					err:    fmt.Errorf("Error when generating new POST request: %v", requestErr),
+				}
+				return
+			}
+
+			req.Header.Set("X-Registry-Auth", authHeader)
+			req.Header.Set("Content-Type", "application/json")
+
+			client := &http.Client{}
+
+			resp, httpErr := client.Do(req)
+			if httpErr != nil {
+
+				tupleChan <- hostErrTuple{
+					server: host,
+					err:    fmt.Errorf("Error when POST'ing to remote dogestry server: %v", httpErr),
+				}
+				return
+			}
+			defer resp.Body.Close()
+
+			body, readErr := ioutil.ReadAll(resp.Body)
+			if readErr != nil {
+				tupleChan <- hostErrTuple{
+					server: host,
+					err:    fmt.Errorf("Error reading dogestry server's response: %v", readErr),
+				}
+				return
+			}
+
+			fmt.Printf("Go routine for host %v got this response: %v\n", host, string(body))
+
+			// Unmarshal and check JSON
+
+			// All is well
+			tupleChan <- hostErrTuple{"", nil}
+		}(host, authHeader, tupleChan)
 	}
-	defer resp.Body.Close()
 
-	body, readErr := ioutil.ReadAll(resp.Body)
-	if readErr != nil {
-		fmt.Println("Error when reading dogestry server's response:", readErr)
-		return readErr
+	errorMessage := ""
+
+	// Listen for updates from all goroutines
+	for range hosts {
+		hostStatus := <-tupleChan
+
+		if hostStatus.err != nil {
+			// Combine all errors into a single message
+			errorMessage = errorMessage + fmt.Sprintf("%v: %v; ", hostStatus.server, hostStatus.err.Error())
+		}
 	}
 
-	fmt.Println("Got this bad boy back:", string(body))
+	close(tupleChan)
+
+	if errorMessage != "" {
+		return fmt.Errorf("Ran into one or more errors: %v", errorMessage)
+	}
 
 	return nil
 }
@@ -113,8 +157,6 @@ func (cli *DogestryCli) GenerateAuthHeader() (string, error) {
 		Password: cli.Config.AWS.SecretAccessKey,
 		Email:    cli.Config.AWS.S3URL.String(),
 	}
-
-	fmt.Printf(">>>>>>> OUR S3URL: %v\n", authHeader.Email)
 
 	data, err := json.Marshal(authHeader)
 	if err != nil {
