@@ -1,10 +1,16 @@
 package cli
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"time"
 
+	"github.com/dogestry/dogestry/config"
 	"github.com/dogestry/dogestry/remote"
 	"github.com/dogestry/dogestry/utils"
 )
@@ -31,29 +37,96 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 		return errors.New("Error: REMOTE and IMAGE not specified")
 	}
 
-	// Extract hostname from pullhosts args
-	hosts := utils.ParseHostnames(cli.PullHosts)
-
-	fmt.Printf("Found the following hosts: %v\n", hosts)
-
-	regularDownload := make(map[string]bool, 0)
-	checkTimeout := time.Duration(500) * time.Millisecond
-
-	// Check which hosts are running the dogestry server
-	for _, host := range hosts {
-		if utils.DogestryServerCheck(host, cli.Config.ServerPort, checkTimeout) {
-			fmt.Println("Dogestry server is running on:", host)
-			regularDownload[host] = true
-		} else {
-			regularDownload[host] = false
-		}
-	}
-
 	S3URL := pullFlags.Arg(0)
 	image := pullFlags.Arg(1)
 
 	cli.Config.SetS3URL(S3URL)
 
+	// Extract hostname from pullhosts args
+	hosts := utils.ParseHostnames(cli.PullHosts)
+
+	haveDogestry := make([]string, 0)
+	checkTimeout := time.Duration(1) * time.Second
+
+	// Check which hosts are running the dogestry server
+	for _, host := range hosts {
+		if utils.DogestryServerCheck(host, cli.Config.ServerPort, checkTimeout) {
+			haveDogestry = append(haveDogestry, host)
+		}
+	}
+
+	if len(haveDogestry) == len(cli.PullHosts) {
+		fmt.Println("Detected dogestry server on all pullhosts!")
+		return cli.DogestryPull(hosts, image)
+	} else {
+		fmt.Println("Performing regular dogestry pull!")
+		return cli.RegularPull(image)
+	}
+}
+
+func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
+	// Generate our auth header
+	authHeader, headerErr := cli.GenerateAuthHeader()
+	if headerErr != nil {
+		return headerErr
+	}
+
+	// Craft url
+	fullURL := fmt.Sprintf("http://%v:%v/9001/images/create?fromImage=%v", hosts[0],
+		cli.Config.ServerPort, url.QueryEscape(image))
+
+	fmt.Printf("Generated the following URL: %v", fullURL)
+
+	// POST
+	req, requestErr := http.NewRequest("POST", fullURL, nil)
+	if requestErr != nil {
+		fmt.Println("Error when generating new POST request:", requestErr)
+		return requestErr
+	}
+
+	req.Header.Set("X-Registry-Auth", authHeader)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+
+	resp, httpErr := client.Do(req)
+	if httpErr != nil {
+		fmt.Println("Error when POST'ing to remote dogestry:", httpErr)
+		return httpErr
+	}
+	defer resp.Body.Close()
+
+	body, readErr := ioutil.ReadAll(resp.Body)
+	if readErr != nil {
+		fmt.Println("Error when reading dogestry server's response:", readErr)
+		return readErr
+	}
+
+	fmt.Println("Got this bad boy back:", string(body))
+
+	return nil
+}
+
+func (cli *DogestryCli) GenerateAuthHeader() (string, error) {
+	authHeader := &config.AuthConfig{
+		Username: cli.Config.AWS.AccessKeyID,
+		Password: cli.Config.AWS.SecretAccessKey,
+		Email:    cli.Config.AWS.S3URL.String(),
+	}
+
+	fmt.Printf(">>>>>>> OUR S3URL: %v\n", authHeader.Email)
+
+	data, err := json.Marshal(authHeader)
+	if err != nil {
+		return "", err
+	}
+
+	encData := base64.StdEncoding.EncodeToString(data)
+
+	return encData, nil
+}
+
+func (cli *DogestryCli) RegularPull(image string) error {
 	imageRoot, err := cli.WorkDir(image)
 	if err != nil {
 		return err

@@ -7,7 +7,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"net"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"regexp"
 	"time"
@@ -91,12 +92,27 @@ func ParseHostnames(pullHosts []string) []string {
 
 // See if remote Dogestry port is open
 func DogestryServerCheck(host string, port int, timeout time.Duration) bool {
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%v:%v", host, port), timeout)
-	if err != nil {
+	url := fmt.Sprintf("http://%v:%v/status/check", host, port)
+
+	client := http.Client{
+		Timeout: timeout,
+	}
+
+	resp, getErr := client.Get(url)
+	if getErr != nil {
 		return false
 	}
 
-	conn.Close()
+	defer resp.Body.Close()
+
+	body, readErr := ioutil.ReadAll(resp.Body)
+	if readErr != nil {
+		return false
+	}
+
+	if string(body) != "OK" {
+		return false
+	}
 
 	return true
 }
