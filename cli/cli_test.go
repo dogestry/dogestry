@@ -10,7 +10,7 @@ import (
 var hosts = make([]string, 0)
 
 func TestNewDogestryCli(t *testing.T) {
-	cfg, err := config.NewConfig(false)
+	cfg, err := config.NewConfig(false, 22375, false, false)
 	if err != nil {
 		t.Fatalf("Creating dogestry config should work. Error: %v", err)
 	}
@@ -26,7 +26,7 @@ func TestNewDogestryCli(t *testing.T) {
 }
 
 func TestCreateAndReturnTempDirAndCleanup(t *testing.T) {
-	cfg, err := config.NewConfig(false)
+	cfg, err := config.NewConfig(false, 22375, false, false)
 	if err != nil {
 		t.Fatalf("Creating dogestry config should work. Error: %v", err)
 	}
