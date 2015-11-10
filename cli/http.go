@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/carbocation/interpose"
-	"github.com/carbocation/interpose/middleware"
+	// "github.com/carbocation/interpose"
+	// "github.com/carbocation/interpose/middleware"
 	"github.com/dogestry/dogestry/config"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -97,14 +98,11 @@ func rootHandler(response http.ResponseWriter, req *http.Request) {
 
 func ServeHttp(address string) {
 	router := mux.NewRouter()
-	middle := interpose.New()
-	middle.Use(middleware.GorillaLog())
-	middle.UseHandler(router)
 
-	router.Handle("/{version}/images/create", http.HandlerFunc(pullHandler)).Methods("POST")
-	router.Handle("/status/check", http.HandlerFunc(healthCheckHandler)).Methods("GET")
-	router.Handle("/", http.HandlerFunc(rootHandler)).Methods("GET")
-	http.Handle("/", middle)
+	router.Handle("/{version}/images/create", handlers.LoggingHandler(os.Stdout, http.HandlerFunc(pullHandler))).Methods("POST")
+	router.Handle("/status/check", handlers.LoggingHandler(os.Stdout, http.HandlerFunc(healthCheckHandler))).Methods("GET")
+	router.Handle("/", handlers.LoggingHandler(os.Stdout, http.HandlerFunc(rootHandler))).Methods("GET")
+	http.Handle("/", router)
 
 	err := http.ListenAndServe(address, nil)
 	if err != nil {
