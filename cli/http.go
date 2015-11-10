@@ -99,10 +99,11 @@ func rootHandler(response http.ResponseWriter, req *http.Request) {
 func ServeHttp(address string) {
 	router := mux.NewRouter()
 
-	router.Handle("/{version}/images/create", handlers.LoggingHandler(os.Stdout, http.HandlerFunc(pullHandler))).Methods("POST")
-	router.Handle("/status/check", handlers.LoggingHandler(os.Stdout, http.HandlerFunc(healthCheckHandler))).Methods("GET")
-	router.Handle("/", handlers.LoggingHandler(os.Stdout, http.HandlerFunc(rootHandler))).Methods("GET")
-	http.Handle("/", router)
+	router.Handle("/{version}/images/create", http.HandlerFunc(pullHandler)).Methods("POST")
+	router.Handle("/status/check", http.HandlerFunc(healthCheckHandler)).Methods("GET")
+	router.Handle("/", http.HandlerFunc(rootHandler)).Methods("GET")
+
+	http.Handle("/", handlers.LoggingHandler(os.Stdout, router))
 
 	err := http.ListenAndServe(address, nil)
 	if err != nil {
