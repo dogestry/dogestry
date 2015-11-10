@@ -83,7 +83,7 @@ func main() {
 		// Allow 'help', 'version' and 'login' to not require AWS cred env vars
 		requireEnvVars := true
 
-		if args[0] == "help" || args[0] == "login" || args[0] == "version" {
+		if len(args) == 0 || (args[0] == "help" || args[0] == "login" || args[0] == "version") {
 			requireEnvVars = false
 		}
 
