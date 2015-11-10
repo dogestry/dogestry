@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"os"
 
-	// "github.com/carbocation/interpose"
-	// "github.com/carbocation/interpose/middleware"
 	"github.com/dogestry/dogestry/config"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"

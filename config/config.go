@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-func NewConfig(useMetaService bool, serverPort int) (Config, error) {
+func NewConfig(useMetaService bool, serverPort int, slow bool) (Config, error) {
 	c := Config{}
 	c.AWS.AccessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
 	if c.AWS.AccessKeyID == "" {
@@ -34,6 +34,7 @@ func NewConfig(useMetaService bool, serverPort int) (Config, error) {
 	}
 
 	c.ServerPort = serverPort
+	c.Slow = slow
 
 	return c, nil
 }
@@ -90,6 +91,7 @@ type AuthConfig struct {
 type Config struct {
 	ServerMode bool
 	ServerPort int
+	Slow       bool // whether to attempt remote dogestry server usage
 
 	AWS struct {
 		S3URL           *url.URL

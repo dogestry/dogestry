@@ -42,7 +42,13 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 
 	cli.Config.SetS3URL(S3URL)
 
-	// Extract hostname from pullhosts args
+	// Perform regular pull if we are explicitly told to _not_ use dogestry server(s)
+	if cli.Config.Slow {
+		fmt.Println("Performing regular dogestry pull (dogestry server use disabled)...")
+		return cli.RegularPull(image)
+	}
+
+	// Let's try to use dogestry server(s)!
 	hosts := utils.ParseHostnames(cli.PullHosts)
 
 	haveDogestry := make([]string, 0)
@@ -55,11 +61,12 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 		}
 	}
 
+	// Only perform "server pull" if all hosts are running dogestry server
 	if len(haveDogestry) == len(cli.PullHosts) {
 		fmt.Println("Detected dogestry server on all pullhosts!")
 		return cli.DogestryPull(hosts, image)
 	} else {
-		fmt.Println("Performing regular dogestry pull (this may take a while)!")
+		fmt.Println("Performing regular dogestry pull (one or more hosts is not running dogestry server)!")
 		return cli.RegularPull(image)
 	}
 }
