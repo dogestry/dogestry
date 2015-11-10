@@ -86,45 +86,13 @@ func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
 	tupleChan := make(chan *HostErrTuple)
 
 	for _, host := range hosts {
-		fmt.Printf("Starting image pull via dogestry server on host %v...\n", host)
+		fmt.Printf("Launching goroutine for pulling image on %v...\n", host)
 
-		// Craft url
 		fullURL := fmt.Sprintf("http://%v:%v/9001/images/create?fromImage=%v", host,
 			cli.Config.ServerPort, url.QueryEscape(image))
 
-		go func(host string, header string, tupleChan chan *HostErrTuple) {
-			// Request dogestry server to pull image
-			req, requestErr := http.NewRequest("POST", fullURL, nil)
-			if requestErr != nil {
-				tupleChan <- &HostErrTuple{
-					Server: host,
-					Err:    fmt.Errorf("Error when generating new POST request: %v", requestErr),
-				}
-				return
-			}
-
-			req.Header.Set("X-Registry-Auth", authHeader)
-			req.Header.Set("Content-Type", "application/json")
-
-			client := &http.Client{}
-
-			resp, httpErr := client.Do(req)
-			if httpErr != nil {
-
-				tupleChan <- &HostErrTuple{
-					Server: host,
-					Err:    fmt.Errorf("Error when POST'ing to remote dogestry server: %v", httpErr),
-				}
-				return
-			}
-			defer resp.Body.Close()
-
-			// Evaluate and display streamed updates from Dogestry server
-			cli.StreamUpdates(host, resp.Body, tupleChan)
-
-			// All is well
-			tupleChan <- &HostErrTuple{"", nil}
-		}(host, authHeader, tupleChan)
+		// POST and evaluate JSON stream updates
+		go cli.PerformDogestryPull(fullURL, host, authHeader, tupleChan)
 	}
 
 	errorMessage := ""
@@ -146,6 +114,40 @@ func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
 	}
 
 	return nil
+}
+
+func (cli *DogestryCli) PerformDogestryPull(fullURL, host, authHeader string, tupleChan chan *HostErrTuple) {
+	// Request dogestry server to pull image
+	req, requestErr := http.NewRequest("POST", fullURL, nil)
+	if requestErr != nil {
+		tupleChan <- &HostErrTuple{
+			Server: host,
+			Err:    fmt.Errorf("Error when generating new POST request: %v", requestErr),
+		}
+		return
+	}
+
+	req.Header.Set("X-Registry-Auth", authHeader)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+
+	resp, httpErr := client.Do(req)
+	if httpErr != nil {
+
+		tupleChan <- &HostErrTuple{
+			Server: host,
+			Err:    fmt.Errorf("Error when POST'ing to remote dogestry server: %v", httpErr),
+		}
+		return
+	}
+	defer resp.Body.Close()
+
+	// Evaluate and display streamed updates from Dogestry server
+	cli.StreamUpdates(host, resp.Body, tupleChan)
+
+	// All is well
+	tupleChan <- &HostErrTuple{"", nil}
 }
 
 func (cli *DogestryCli) StreamUpdates(host string, body io.ReadCloser, tupleChan chan *HostErrTuple) {
