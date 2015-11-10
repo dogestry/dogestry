@@ -148,8 +148,8 @@ func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
 	return nil
 }
 
-func (cli *DogestryCli) StreamUpdates(host string, body io.Reader, tupleChan chan *HostErrTuple) {
-	d := json.NewDecoder(&body)
+func (cli *DogestryCli) StreamUpdates(host string, body io.ReadCloser, tupleChan chan *HostErrTuple) {
+	d := json.NewDecoder(body)
 
 	var serverError error
 
@@ -157,10 +157,12 @@ func (cli *DogestryCli) StreamUpdates(host string, body io.Reader, tupleChan cha
 		var statusUpdate map[string]interface{}
 
 		if err := d.Decode(&statusUpdate); err != nil {
+			// Not sure if we ever hit this state; keeping just in case.
 			if err == io.EOF {
-				fmt.Println(">>>>Reached EOF<<<<<")
+				fmt.Printf("Hmmm - reached EOF for host %v\n", host)
 				break
 			} else if err == io.ErrUnexpectedEOF {
+				fmt.Printf("[ERROR] %v: %v\n", host, err)
 				serverError = fmt.Errorf("Server disappeared: %v", err)
 				break
 			}
@@ -174,10 +176,10 @@ func (cli *DogestryCli) StreamUpdates(host string, body io.Reader, tupleChan cha
 			statusMessage := statusUpdate["status"].(string)
 
 			if statusMessage == "Done" {
-				fmt.Println("[DONE] %v: Pull finished successfully", host)
+				fmt.Printf("[DONE] %v: Pull finished successfully\n", host)
 				break
 			} else {
-				fmt.Println("[UPDATE] %v: %v", statusMessage)
+				fmt.Printf("[UPDATE] %v: %v\n", host, statusMessage)
 			}
 		}
 	}
