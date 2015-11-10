@@ -66,8 +66,7 @@ func main() {
 	flag.Parse()
 
 	if flVersion {
-		err := cli.PrintVersion()
-		if err != nil {
+		if err := cli.PrintVersion(); err != nil {
 			log.Fatal(err)
 		}
 		return
@@ -81,7 +80,14 @@ func main() {
 	} else {
 		args := flag.Args()
 
-		cfg, err := config.NewConfig(flUseMetaService, flServerPort, flSlow)
+		// Allow 'help', 'version' and 'login' to not require AWS cred env vars
+		requireEnvVars := true
+
+		if args[0] == "help" || args[0] == "login" || args[0] == "version" {
+			requireEnvVars = false
+		}
+
+		cfg, err := config.NewConfig(flUseMetaService, flServerPort, flSlow, requireEnvVars)
 		if err != nil {
 			log.Fatal(err)
 		}
