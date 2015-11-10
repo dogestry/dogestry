@@ -20,6 +20,10 @@ type JSONErrorDetail struct {
 	Message string `json:"message"`
 }
 
+type JSONStatus struct {
+	Status string `json:"status"`
+}
+
 func errorJSON(msg string) []byte {
 	problem := JSONError{
 		ErrorMessage: msg,

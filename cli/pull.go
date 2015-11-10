@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -71,6 +71,11 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 	}
 }
 
+type HostErrTuple struct {
+	Server string
+	Err    error
+}
+
 func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
 	// Generate our auth header
 	authHeader, headerErr := cli.GenerateAuthHeader()
@@ -78,12 +83,7 @@ func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
 		return headerErr
 	}
 
-	type hostErrTuple struct {
-		server string
-		err    error
-	}
-
-	tupleChan := make(chan hostErrTuple)
+	tupleChan := make(chan *HostErrTuple)
 
 	for _, host := range hosts {
 		fmt.Printf("Starting image pull via dogestry server on host %v...\n", host)
@@ -92,13 +92,13 @@ func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
 		fullURL := fmt.Sprintf("http://%v:%v/9001/images/create?fromImage=%v", host,
 			cli.Config.ServerPort, url.QueryEscape(image))
 
-		go func(host string, header string, tupleChan chan hostErrTuple) {
+		go func(host string, header string, tupleChan chan *HostErrTuple) {
 			// Request dogestry server to pull image
 			req, requestErr := http.NewRequest("POST", fullURL, nil)
 			if requestErr != nil {
-				tupleChan <- hostErrTuple{
-					server: host,
-					err:    fmt.Errorf("Error when generating new POST request: %v", requestErr),
+				tupleChan <- &HostErrTuple{
+					Server: host,
+					Err:    fmt.Errorf("Error when generating new POST request: %v", requestErr),
 				}
 				return
 			}
@@ -111,29 +111,19 @@ func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
 			resp, httpErr := client.Do(req)
 			if httpErr != nil {
 
-				tupleChan <- hostErrTuple{
-					server: host,
-					err:    fmt.Errorf("Error when POST'ing to remote dogestry server: %v", httpErr),
+				tupleChan <- &HostErrTuple{
+					Server: host,
+					Err:    fmt.Errorf("Error when POST'ing to remote dogestry server: %v", httpErr),
 				}
 				return
 			}
 			defer resp.Body.Close()
 
-			body, readErr := ioutil.ReadAll(resp.Body)
-			if readErr != nil {
-				tupleChan <- hostErrTuple{
-					server: host,
-					err:    fmt.Errorf("Error reading dogestry server's response: %v", readErr),
-				}
-				return
-			}
-
-			fmt.Printf("Go routine for host %v got this response: %v\n", host, string(body))
-
-			// Unmarshal and check JSON
+			// Evaluate and display streamed updates from Dogestry server
+			cli.StreamUpdates(host, resp.Body, tupleChan)
 
 			// All is well
-			tupleChan <- hostErrTuple{"", nil}
+			tupleChan <- &HostErrTuple{"", nil}
 		}(host, authHeader, tupleChan)
 	}
 
@@ -143,9 +133,9 @@ func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
 	for range hosts {
 		hostStatus := <-tupleChan
 
-		if hostStatus.err != nil {
+		if hostStatus.Err != nil {
 			// Combine all errors into a single message
-			errorMessage = errorMessage + fmt.Sprintf("%v: %v; ", hostStatus.server, hostStatus.err.Error())
+			errorMessage = errorMessage + fmt.Sprintf("%v: %v; ", hostStatus.Server, hostStatus.Err.Error())
 		}
 	}
 
@@ -156,6 +146,47 @@ func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
 	}
 
 	return nil
+}
+
+func (cli *DogestryCli) StreamUpdates(host string, body io.Reader, tupleChan chan *HostErrTuple) {
+	d := json.NewDecoder(&body)
+
+	var serverError error
+
+	for {
+		var statusUpdate map[string]interface{}
+
+		if err := d.Decode(&statusUpdate); err != nil {
+			if err == io.EOF {
+				fmt.Println(">>>>Reached EOF<<<<<")
+				break
+			} else if err == io.ErrUnexpectedEOF {
+				serverError = fmt.Errorf("Server disappeared: %v", err)
+				break
+			}
+		}
+
+		if _, ok := statusUpdate["error"]; ok {
+			fmt.Printf("[ERROR] %v: %v\n", host, statusUpdate["error"].(string))
+			serverError = fmt.Errorf("Error on host %v: %v", host, statusUpdate["error"].(string))
+			break
+		} else if _, ok := statusUpdate["status"]; ok {
+			statusMessage := statusUpdate["status"].(string)
+
+			if statusMessage == "Done" {
+				fmt.Println("[DONE] %v: Pull finished successfully", host)
+				break
+			} else {
+				fmt.Println("[UPDATE] %v: %v", statusMessage)
+			}
+		}
+	}
+
+	// Stream finished, send update
+	tupleChan <- &HostErrTuple{
+		Server: host,
+		Err:    serverError,
+	}
 }
 
 func (cli *DogestryCli) GenerateAuthHeader() (string, error) {
