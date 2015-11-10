@@ -2,7 +2,7 @@
 
 # Dogestry
 
-Simple CLI app for storing Docker image on Amazon S3.
+Simple CLI app for storing and retrieiving Docker image(s) from Amazon S3.
 
 ## Prerequisites
 
@@ -64,6 +64,34 @@ The s3 version, with pullhosts:
 dogestry -pullhosts tcp://host-1:2375,tcp://host-2:2375,tcp://host-3:2375 s3://ops-goodies/docker-repo/ hipache
 ```
 
+### Server mode
+Dogestry can also be ran in server mode with the `-server` parameter; doing so can dramatically speed up image pull's when using `-pullhosts`.
+
+To make use of server mode:
+
+1. Deploy and run Dogestry with the `-server` param on all Docker servers that are the destinations of the '-pullhosts' parameter
+2. Ensure your firewall on the host(s) is configured to allow incoming requests on port *22375* (this is what dogestry server listens on by default)
+3. Perform your `pull` (with `-pullhosts`) as usual:
+
+```
+$ dogestry -pullhosts tcp://host-1:2375,tcp://host-2:2375,tcp://host-3:2375 s3://ops-goodies/docker-repo/ hipache
+```
+
+Dogestry (client) will automatically detect that the remote host is running Dogestry server and issue the pull command directly to the host (instead of pulling the image down first and then uploading it to the host via Docker API).
+
+In addition, you can also perform a `pull` against a server running Dogestry, avoiding the need for the `dogestry` binary:
+
+```
+# Update your .dockercfg to include your AWS credentials
+$ dogestry login opsgoodies.com
+Updating docker file /root/.dockercfg...
+AWS_ACCESS_KEY: MyAwsAccessKey
+AWS_SECRET_KEY: MyAWSSecretKey
+S3_URL: s3://ops-goodies
+# You can now pull via the Docker binary
+$ docker -H tcp://host-1:22375 pull opsgoodies.com/docker-repo/hipache
+```
+ 
 ## S3 files layout
 
 Dogestry will create two directories within your S3 bucket called "images" and "repositories". Example contents:
