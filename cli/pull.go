@@ -83,7 +83,7 @@ func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
 		return headerErr
 	}
 
-	tupleChan := make(chan *HostErrTuple)
+	tupleChan := make(chan *HostErrTuple, 1)
 
 	for _, host := range hosts {
 		fmt.Printf("Launching goroutine for pulling image on %v...\n", host)
@@ -96,14 +96,22 @@ func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
 	}
 
 	errorMessage := ""
+	finished := make([]string, 0)
 
 	// Listen for updates from all goroutines
-	for range hosts {
-		hostStatus := <-tupleChan
-
+	for hostStatus := range tupleChan {
 		if hostStatus.Err != nil {
-			// Combine all errors into a single message
-			errorMessage = errorMessage + fmt.Sprintf("%v: %v; ", hostStatus.Server, hostStatus.Err.Error())
+			// Bail if we run into an error on any host
+			errorMessage = fmt.Sprintf("%v: %v; ", hostStatus.Server, hostStatus.Err.Error())
+			break
+		} else {
+			// Received update, no error == goroutine has finished
+			finished = append(finished, hostStatus.Server)
+		}
+
+		// All goroutines have finished
+		if len(finished) == len(hosts) {
+			break
 		}
 	}
 
@@ -134,7 +142,6 @@ func (cli *DogestryCli) PerformDogestryPull(fullURL, host, authHeader string, tu
 
 	resp, httpErr := client.Do(req)
 	if httpErr != nil {
-
 		tupleChan <- &HostErrTuple{
 			Server: host,
 			Err:    fmt.Errorf("Error when POST'ing to remote dogestry server: %v", httpErr),
@@ -145,9 +152,6 @@ func (cli *DogestryCli) PerformDogestryPull(fullURL, host, authHeader string, tu
 
 	// Evaluate and display streamed updates from Dogestry server
 	cli.StreamUpdates(host, resp.Body, tupleChan)
-
-	// All is well
-	tupleChan <- &HostErrTuple{"", nil}
 }
 
 func (cli *DogestryCli) StreamUpdates(host string, body io.ReadCloser, tupleChan chan *HostErrTuple) {
