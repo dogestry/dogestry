@@ -132,5 +132,18 @@ func LocateDockerCfg() (string, error) {
 		return "", err
 	}
 
+	// Check if .config dir exists
+	s, err := os.Stat(usr.HomeDir + "/.docker")
+	if err != nil {
+		// File/dir does not exist, fall back
+		return usr.HomeDir + "/.dockercfg", nil
+	}
+
+	// Exists, but is it a dir?
+	if s.IsDir() {
+		return usr.HomeDir + "/.docker/config", nil
+	}
+
+	// Not a dir, fall back
 	return usr.HomeDir + "/.dockercfg", nil
 }
