@@ -8,7 +8,7 @@ import (
 func TestNewConfig(t *testing.T) {
 	os.Setenv("AWS_ACCESS_KEY_ID", "access")
 	os.Setenv("AWS_SECRET_ACCESS_KEY", "secret")
-	c, err := NewConfig(false)
+	c, err := NewConfig(false, 22375, false, true)
 	if err != nil {
 		t.Fatalf("Failed to create config. Error: %v", err)
 	}
@@ -27,12 +27,12 @@ func TestNewConfig(t *testing.T) {
 	os.Unsetenv("AWS_SECRET_ACCESS_KEY")
 	os.Unsetenv("AWS_SECRET_KEY")
 
-	c, err = NewConfig(false)
+	c, err = NewConfig(false, 22375, false, true)
 	if err == nil || err.Error() != "AWS_ACCESS_KEY_ID/AWS_ACCESS_KEY or AWS_SECRET_ACCESS_KEY/AWS_SECRET_KEY are missing." {
 		t.Error("should return error when evn vars are not set")
 	}
 
-	c, err = NewConfig(true)
+	c, err = NewConfig(true, 22375, false, false)
 	if err != nil {
 		t.Error("should not renturn an error")
 	}

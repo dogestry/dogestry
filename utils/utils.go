@@ -7,7 +7,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
+	"strings"
+	"time"
 )
 
 // HumanSize returns a human-readable approximation of a size
@@ -66,4 +71,51 @@ func Sha1File(path string) (string, error) {
 
 	io.Copy(hash, buff)
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+// Extract hostnames from a list of pullhost args
+// ie. 'tcp://some.hostname.com:2375', extract 'some.hostname.com'
+func ParseHostnames(pullHosts []string) []string {
+	parsedHosts := make([]string, 0)
+
+	for _, hostEntry := range pullHosts {
+		parsed, err := url.Parse(hostEntry)
+		if err != nil {
+			continue
+		}
+
+		if parsed.Scheme == "tcp" && parsed.Host != "" {
+			hostname := strings.Split(parsed.Host, ":")
+			parsedHosts = append(parsedHosts, hostname[0])
+		}
+	}
+
+	return parsedHosts
+}
+
+// See if remote Dogestry port is open
+func DogestryServerCheck(host string, port int, timeout time.Duration) bool {
+	url := fmt.Sprintf("http://%v:%v/status/check", host, port)
+
+	client := http.Client{
+		Timeout: timeout,
+	}
+
+	resp, getErr := client.Get(url)
+	if getErr != nil {
+		return false
+	}
+
+	defer resp.Body.Close()
+
+	body, readErr := ioutil.ReadAll(resp.Body)
+	if readErr != nil {
+		return false
+	}
+
+	if string(body) != "OK" {
+		return false
+	}
+
+	return true
 }

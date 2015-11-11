@@ -41,7 +41,7 @@ func (s *S) SetUpSuite(c *C) {
 
 	s.TempDir = tempDir
 
-	baseConfig, err := config.NewConfig(false)
+	baseConfig, err := config.NewConfig(false, 22375, false, false)
 	if err != nil {
 		c.Fatalf("couldn't initialize config. Error: %s", err)
 	}

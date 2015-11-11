@@ -307,16 +307,19 @@ func (cli *DogestryCli) sendTar(imageRoot string) error {
 		bar   *pb.ProgressBar
 	}
 
-	progressBar := &placeboProgressBar{1000, pb.StartNew(1000)}
-	progressBar.bar.ShowCounters = false
+	// Avoid displaying the progress bar if dogestry is running in server mode
+	if !cli.Config.ServerMode {
+		progressBar := &placeboProgressBar{1000, pb.StartNew(1000)}
+		progressBar.bar.ShowCounters = false
 
-	// Starts the placebo progress bar
-	go func(progressBar *placeboProgressBar) {
-		for {
-			progressBar.bar.Increment()
-			time.Sleep(time.Second)
-		}
-	}(progressBar)
+		// Starts the placebo progress bar
+		go func(progressBar *placeboProgressBar) {
+			for {
+				progressBar.bar.Increment()
+				time.Sleep(time.Second)
+			}
+		}(progressBar)
+	}
 
 	tupleCh := make(chan hostErrTuple)
 

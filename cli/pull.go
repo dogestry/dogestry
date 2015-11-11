@@ -1,10 +1,18 @@
 package cli
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"time"
 
+	"github.com/dogestry/dogestry/config"
 	"github.com/dogestry/dogestry/remote"
+	"github.com/dogestry/dogestry/utils"
 )
 
 const PullHelpMessage string = `  Pull IMAGE from REMOTE and load it into docker.
@@ -34,6 +42,175 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 
 	cli.Config.SetS3URL(S3URL)
 
+	// Perform regular pull if we are explicitly told to _not_ use dogestry server(s)
+	if cli.Config.ForceLocal {
+		fmt.Println("Performing regular dogestry pull (dogestry server use disabled)...")
+		return cli.RegularPull(image)
+	}
+
+	// Let's try to use dogestry server(s)!
+	hosts := utils.ParseHostnames(cli.PullHosts)
+
+	haveDogestry := make([]string, 0)
+	checkTimeout := time.Duration(1) * time.Second
+
+	// Check which hosts are running the dogestry server
+	for _, host := range hosts {
+		if utils.DogestryServerCheck(host, cli.Config.ServerPort, checkTimeout) {
+			haveDogestry = append(haveDogestry, host)
+		}
+	}
+
+	// Only perform "server pull" if all hosts are running dogestry server
+	if len(haveDogestry) == len(cli.PullHosts) {
+		fmt.Println("Detected dogestry server on all pullhosts!")
+		return cli.DogestryPull(hosts, image)
+	} else {
+		fmt.Println("Performing regular dogestry pull (one or more hosts is not running dogestry server)!")
+		return cli.RegularPull(image)
+	}
+}
+
+type HostErrTuple struct {
+	Server string
+	Err    error
+}
+
+func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
+	// Generate our auth header
+	authHeader, headerErr := cli.GenerateAuthHeader()
+	if headerErr != nil {
+		return headerErr
+	}
+
+	tupleChan := make(chan *HostErrTuple)
+
+	for _, host := range hosts {
+		fmt.Printf("Launching goroutine for pulling image on %v...\n", host)
+
+		fullURL := fmt.Sprintf("http://%v:%v/1.19/images/create?fromImage=%v", host,
+			cli.Config.ServerPort, url.QueryEscape(image))
+
+		// POST and evaluate JSON stream updates
+		go cli.PerformDogestryPull(fullURL, host, authHeader, tupleChan)
+	}
+
+	errorMessage := ""
+
+	// Listen for updates from all goroutines
+	for range hosts {
+		hostStatus := <-tupleChan
+
+		if hostStatus.Err != nil {
+			// Combine all errors into a single message
+			errorMessage = errorMessage + fmt.Sprintf("%v: %v; ", hostStatus.Server, hostStatus.Err.Error())
+		}
+	}
+
+	close(tupleChan)
+
+	if errorMessage != "" {
+		return fmt.Errorf("Ran into one or more errors: %v", errorMessage)
+	}
+
+	return nil
+}
+
+func (cli *DogestryCli) PerformDogestryPull(fullURL, host, authHeader string, tupleChan chan *HostErrTuple) {
+	// Request dogestry server to pull image
+	req, requestErr := http.NewRequest("POST", fullURL, nil)
+	if requestErr != nil {
+		tupleChan <- &HostErrTuple{
+			Server: host,
+			Err:    fmt.Errorf("Error when generating new POST request: %v", requestErr),
+		}
+		return
+	}
+
+	req.Header.Set("X-Registry-Auth", authHeader)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+
+	resp, httpErr := client.Do(req)
+	if httpErr != nil {
+
+		tupleChan <- &HostErrTuple{
+			Server: host,
+			Err:    fmt.Errorf("Error when POST'ing to remote dogestry server: %v", httpErr),
+		}
+		return
+	}
+	defer resp.Body.Close()
+
+	// Evaluate and display streamed updates from Dogestry server
+	cli.StreamUpdates(host, resp.Body, tupleChan)
+
+	// All is well
+	tupleChan <- &HostErrTuple{"", nil}
+}
+
+func (cli *DogestryCli) StreamUpdates(host string, body io.ReadCloser, tupleChan chan *HostErrTuple) {
+	d := json.NewDecoder(body)
+
+	var serverError error
+
+	for {
+		var statusUpdate map[string]interface{}
+
+		if err := d.Decode(&statusUpdate); err != nil {
+			// Not sure if we ever hit this state; keeping just in case.
+			if err == io.EOF {
+				fmt.Printf("Hmmm - reached EOF for host %v\n", host)
+				break
+			} else if err == io.ErrUnexpectedEOF {
+				fmt.Printf("[ERROR] %v: %v\n", host, err)
+				serverError = fmt.Errorf("Server disappeared: %v", err)
+				break
+			}
+		}
+
+		if _, ok := statusUpdate["error"]; ok {
+			fmt.Printf("[ERROR] %v: %v\n", host, statusUpdate["error"].(string))
+			serverError = fmt.Errorf("Error on host %v: %v", host, statusUpdate["error"].(string))
+			break
+		} else if _, ok := statusUpdate["status"]; ok {
+			statusMessage := statusUpdate["status"].(string)
+
+			if statusMessage == "Done" {
+				fmt.Printf("[DONE] %v: Pull finished successfully\n", host)
+				break
+			} else {
+				fmt.Printf("[UPDATE] %v: %v\n", host, statusMessage)
+			}
+		}
+	}
+
+	// Stream finished, send update
+	tupleChan <- &HostErrTuple{
+		Server: host,
+		Err:    serverError,
+	}
+}
+
+func (cli *DogestryCli) GenerateAuthHeader() (string, error) {
+	authHeader := &config.AuthConfig{
+		Username: cli.Config.AWS.AccessKeyID,
+		Password: cli.Config.AWS.SecretAccessKey,
+		Email:    cli.Config.AWS.S3URL.String(),
+	}
+
+	data, err := json.Marshal(authHeader)
+	if err != nil {
+		return "", err
+	}
+
+	encData := base64.StdEncoding.EncodeToString(data)
+
+	return encData, nil
+}
+
+func (cli *DogestryCli) RegularPull(image string) error {
 	imageRoot, err := cli.WorkDir(image)
 	if err != nil {
 		return err
