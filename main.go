@@ -36,7 +36,7 @@ var (
 	flServerMode     bool
 	flServerAddress  string
 	flServerPort     int
-	flSlow           bool
+	flForceLocal     bool
 )
 
 func init() {
@@ -54,7 +54,7 @@ func init() {
 	flag.BoolVar(&flServerMode, "server", false, "run dogestry in server mode")
 	flag.StringVar(&flServerAddress, "address", "0.0.0.0", "what address to bind to when running dogestry in server mode")
 	flag.IntVar(&flServerPort, "port", 22375, "what port to bind to when running dogestry in server mode")
-	flag.BoolVar(&flSlow, "slow", false, "do not try to use the dogestry server on host endpoints")
+	flag.BoolVar(&flForceLocal, "force-local", false, "do not try to use the dogestry server on host endpoints")
 }
 
 func main() {
@@ -90,7 +90,7 @@ func main() {
 			requireEnvVars = false
 		}
 
-		cfg, err := config.NewConfig(flUseMetaService, flServerPort, flSlow, requireEnvVars)
+		cfg, err := config.NewConfig(flUseMetaService, flServerPort, flForceLocal, requireEnvVars)
 		if err != nil {
 			log.Fatal(err)
 		}

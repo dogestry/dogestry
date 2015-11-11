@@ -43,7 +43,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 	cli.Config.SetS3URL(S3URL)
 
 	// Perform regular pull if we are explicitly told to _not_ use dogestry server(s)
-	if cli.Config.Slow {
+	if cli.Config.ForceLocal {
 		fmt.Println("Performing regular dogestry pull (dogestry server use disabled)...")
 		return cli.RegularPull(image)
 	}

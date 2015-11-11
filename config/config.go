@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-func NewConfig(useMetaService bool, serverPort int, slow, requireEnvVars bool) (Config, error) {
+func NewConfig(useMetaService bool, serverPort int, forceLocal, requireEnvVars bool) (Config, error) {
 	c := Config{}
 	c.AWS.AccessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
 	if c.AWS.AccessKeyID == "" {
@@ -36,7 +36,7 @@ func NewConfig(useMetaService bool, serverPort int, slow, requireEnvVars bool) (
 	}
 
 	c.ServerPort = serverPort
-	c.Slow = slow
+	c.ForceLocal = forceLocal
 
 	return c, nil
 }
@@ -93,7 +93,7 @@ type AuthConfig struct {
 type Config struct {
 	ServerMode bool
 	ServerPort int
-	Slow       bool // whether to attempt remote dogestry server usage
+	ForceLocal bool // whether to attempt remote dogestry server usage
 
 	AWS struct {
 		S3URL           *url.URL
