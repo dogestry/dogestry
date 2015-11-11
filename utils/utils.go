@@ -9,8 +9,9 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
-	"regexp"
+	"strings"
 	"time"
 )
 
@@ -77,13 +78,15 @@ func Sha1File(path string) (string, error) {
 func ParseHostnames(pullHosts []string) []string {
 	parsedHosts := make([]string, 0)
 
-	re := regexp.MustCompile("^tcp://(.+):2375$")
-
 	for _, hostEntry := range pullHosts {
-		results := re.FindSubmatch([]byte(hostEntry))
+		parsed, err := url.Parse(hostEntry)
+		if err != nil {
+			continue
+		}
 
-		if len(results) == 2 {
-			parsedHosts = append(parsedHosts, string(results[1]))
+		if parsed.Scheme == "tcp" && parsed.Host != "" {
+			hostname := strings.Split(parsed.Host, ":")
+			parsedHosts = append(parsedHosts, hostname[0])
 		}
 	}
 
