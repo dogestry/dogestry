@@ -10,6 +10,7 @@ import (
 
 	"github.com/dogestry/dogestry/cli"
 	"github.com/dogestry/dogestry/config"
+	"github.com/dogestry/dogestry/server"
 	"github.com/dogestry/dogestry/utils"
 )
 
@@ -76,7 +77,9 @@ func main() {
 		fullAddress := fmt.Sprintf("%v:%v", flServerAddress, flServerPort)
 
 		log.Printf("Running dogestry in server mode on '%v'", fullAddress)
-		cli.ServeHttp(fullAddress)
+
+		s := server.New(fullAddress)
+		s.ServeHttp()
 	} else {
 		args := flag.Args()
 

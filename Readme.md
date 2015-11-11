@@ -2,7 +2,7 @@
 
 # Dogestry
 
-Simple CLI app for storing and retrieiving Docker image(s) from Amazon S3.
+Simple CLI app + server for storing and retrieiving Docker image(s) from Amazon S3.
 
 ## Prerequisites
 
@@ -65,7 +65,7 @@ dogestry -pullhosts tcp://host-1:2375,tcp://host-2:2375,tcp://host-3:2375 s3://o
 ```
 
 ### Server mode
-Dogestry can also be ran in server mode with the `-server` parameter; doing so can dramatically speed up image pull's when using `-pullhosts`.
+Dogestry can also be run in server mode with the `-server` parameter; doing so can dramatically speed up image pull's when using `-pullhosts`.
 
 To make use of server mode:
 
