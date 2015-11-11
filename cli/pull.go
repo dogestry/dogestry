@@ -88,7 +88,7 @@ func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
 	for _, host := range hosts {
 		fmt.Printf("Launching goroutine for pulling image on %v...\n", host)
 
-		fullURL := fmt.Sprintf("http://%v:%v/9001/images/create?fromImage=%v", host,
+		fullURL := fmt.Sprintf("http://%v:%v/1.19/images/create?fromImage=%v", host,
 			cli.Config.ServerPort, url.QueryEscape(image))
 
 		// POST and evaluate JSON stream updates
