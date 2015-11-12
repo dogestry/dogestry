@@ -15,7 +15,7 @@ Simple CLI app + server for storing and retrieiving Docker image(s) from Amazon 
 
 If you just want to *run* Dogestry, get the [binary release](https://github.com/dogestry/dogestry/releases) that works for your platform. It's a statically linked binary: there are no dependencies. Download and run it!
 
-If you prefer to build it yourself, clone the repo and `godep go build`
+If you prefer to build it yourself, clone the repo and `godep get && godep go build`
 
 ## Usage
 
