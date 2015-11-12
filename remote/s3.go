@@ -131,12 +131,13 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 		err  error
 	}
 
-	putFileErrChan := make(chan putFileResult)
+	numGoroutines := 25
+
+	putFileErrChan := make(chan putFileResult, numGoroutines)
 	putFilesChan := makeFilesChan(keysToPush)
 
 	defer close(putFileErrChan)
 
-	numGoroutines := 25
 	goroutineQuitChans := make([]chan bool, numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
 		goroutineQuitChans[i] = make(chan bool)
