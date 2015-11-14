@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-const Version string = "2.1.1"
+const Version string = "2.1.2"
 
 func PrintVersion() error {
 	_, err := fmt.Printf("Dogestry %s\n", Version)

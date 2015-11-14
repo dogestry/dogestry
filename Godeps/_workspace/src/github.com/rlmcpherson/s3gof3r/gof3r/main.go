@@ -43,7 +43,7 @@ import (
 
 const (
 	name    = "gof3r"
-	version = "0.4.10"
+	version = "0.5.0"
 )
 
 func main() {
@@ -100,9 +100,11 @@ func getAWSKeys() (keys s3gof3r.Keys, err error) {
 	return
 }
 
-func checkClose(c io.Closer, err *error) {
-	cerr := c.Close()
-	if *err == nil {
-		*err = cerr
+func checkClose(c io.Closer, err error) {
+	if c != nil {
+		cerr := c.Close()
+		if err == nil {
+			err = cerr
+		}
 	}
 }
