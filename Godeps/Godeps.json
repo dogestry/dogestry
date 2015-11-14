@@ -65,8 +65,8 @@
 		},
 		{
 			"ImportPath": "github.com/rlmcpherson/s3gof3r",
-			"Comment": "v0.4.10-7-ged07ab7",
-			"Rev": "ed07ab7f4c26c61b927fc5e51e80e2d3b40f4470"
+			"Comment": "v0.5.0-3-gc70ac93",
+			"Rev": "c70ac93186ea905690463402cab5d3197acc636c"
 		}
 	]
 }

@@ -14,9 +14,7 @@ import (
 	"time"
 )
 
-const (
-	qWaitMax = 2
-)
+const qWaitMax = 2
 
 type getter struct {
 	url   url.URL
@@ -76,7 +74,7 @@ func newGetter(getURL url.URL, c *Config, b *Bucket) (io.ReadCloser, http.Header
 	if err != nil {
 		return nil, nil, err
 	}
-	defer checkClose(resp.Body, &err)
+	defer checkClose(resp.Body, err)
 	if resp.StatusCode != 200 {
 		return nil, nil, newRespError(resp)
 	}
@@ -107,6 +105,11 @@ func (g *getter) retryRequest(method, urlStr string, body io.ReadSeeker) (resp *
 		if err != nil {
 			return
 		}
+
+		if body != nil {
+			req.Header.Set(sha256Header, shaReader(body))
+		}
+
 		g.b.Sign(req)
 		resp, err = g.c.Client.Do(req)
 		if err == nil {
@@ -147,19 +150,18 @@ func (g *getter) worker() {
 	for c := range g.getCh {
 		g.retryGetChunk(c)
 	}
-
 }
 
 func (g *getter) retryGetChunk(c *chunk) {
 	var err error
 	c.b = <-g.sp.get
 	for i := 0; i < g.c.NTry; i++ {
-		time.Sleep(time.Duration(math.Exp2(float64(i))) * 100 * time.Millisecond) // exponential back-off
 		err = g.getChunk(c)
 		if err == nil {
 			return
 		}
 		logger.debugPrintf("error on attempt %d: retrying chunk: %v, error: %s", i, c.id, err)
+		time.Sleep(time.Duration(math.Exp2(float64(i))) * 100 * time.Millisecond) // exponential back-off
 	}
 	select {
 	case <-g.quit: // check for closed quit channel before setting error
@@ -171,7 +173,6 @@ func (g *getter) retryGetChunk(c *chunk) {
 
 func (g *getter) getChunk(c *chunk) error {
 	// ensure buffer is empty
-
 	r, err := http.NewRequest("GET", g.url.String(), nil)
 	if err != nil {
 		return err
@@ -182,8 +183,8 @@ func (g *getter) getChunk(c *chunk) error {
 	if err != nil {
 		return err
 	}
-	defer checkClose(resp.Body, &err)
-	if resp.StatusCode != 206 {
+	defer checkClose(resp.Body, err)
+	if resp.StatusCode != 206 && resp.StatusCode != 200 {
 		return newRespError(resp)
 	}
 	n, err := io.ReadAtLeast(resp.Body, c.b, int(c.size))
@@ -202,6 +203,9 @@ func (g *getter) getChunk(c *chunk) error {
 	// wait for qWait to drain before starting next chunk
 	g.cond.L.Lock()
 	for g.qWaitLen >= qWaitMax {
+		if g.closed {
+			return nil
+		}
 		g.cond.Wait()
 	}
 	g.cond.L.Unlock()
@@ -253,12 +257,10 @@ func (g *getter) Read(p []byte) (int, error) {
 		}
 	}
 	return nw, nil
-
 }
 
 func (g *getter) nextChunk() (*chunk, error) {
 	for {
-
 		// first check qWait
 		c := g.qWait[g.chunkID]
 		if c != nil {
@@ -293,6 +295,8 @@ func (g *getter) Close() error {
 	}
 	g.closed = true
 	close(g.sp.quit)
+	close(g.quit)
+	g.cond.Broadcast()
 	if g.err != nil {
 		return g.err
 	}
@@ -321,7 +325,7 @@ func (g *getter) checkMd5() (err error) {
 	if err != nil {
 		return
 	}
-	defer checkClose(resp.Body, &err)
+	defer checkClose(resp.Body, err)
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("MD5 check failed: %s not found: %s", md5Url.String(), newRespError(resp))
 	}
