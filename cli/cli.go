@@ -60,14 +60,29 @@ func newDockerClient(host string) (*docker.Client, error) {
 	return newClient, err
 }
 
-func NewDogestryCli(cfg config.Config, hosts []string) (*DogestryCli, error) {
+func NewDogestryCli(cfg config.Config, hosts []string, tempDirRoot string) (*DogestryCli, error) {
 	var err error
 
 	dogestryCli := &DogestryCli{
-		Config:     cfg,
-		err:        os.Stderr,
-		DockerHost: cfg.Docker.Connection,
-		PullHosts:  hosts,
+		Config:      cfg,
+		err:         os.Stderr,
+		DockerHost:  cfg.Docker.Connection,
+		PullHosts:   hosts,
+		TempDirRoot: tempDirRoot,
+	}
+
+	// Verify we were given a real dir - abort quickly and early on
+	if dogestryCli.TempDirRoot != "" {
+		fInfo, err := os.Stat(dogestryCli.TempDirRoot)
+		if err != nil {
+			log.Fatalf("Unable to verify temp dir: %v", err)
+			return nil, err
+		}
+
+		if !fInfo.IsDir() {
+			errMsg := fmt.Errorf("Temp dir %v is not a directory!", dogestryCli.TempDirRoot)
+			return nil, errMsg
+		}
 	}
 
 	dogestryCli.Client, err = newDockerClient(dogestryCli.DockerHost)
@@ -136,25 +151,15 @@ func (cli *DogestryCli) Subcmd(name, signature, description string) *flag.FlagSe
 }
 
 // CreateAndReturnTempDir creates and returns temporary work dir
-// This dir is cleaned up on exit
-func (cli *DogestryCli) CreateAndReturnTempDir() string {
-	if cli.TempDir == "" {
-		if cli.TempDirRoot != "" {
-			if err := os.MkdirAll(cli.TempDirRoot, 0755); err != nil {
-				log.Fatal(err)
-			}
-			cli.TempDir = cli.TempDirRoot
-
-		} else {
-			if tempDir, err := ioutil.TempDir(cli.TempDirRoot, "dogestry"); err != nil {
-				log.Fatal(err)
-			} else {
-				cli.TempDir = tempDir
-			}
-		}
+// This dir is cleaned up on exit (if you call Cleanup())
+func (cli *DogestryCli) CreateAndReturnTempDir() (string, error) {
+	if tempDir, err := ioutil.TempDir(cli.TempDirRoot, "dogestry"); err != nil {
+		return "", err
+	} else {
+		cli.TempDir = tempDir
 	}
 
-	return cli.TempDir
+	return cli.TempDir, nil
 }
 
 // WorkDirGivenBaseDir creates temporary dir
@@ -175,7 +180,11 @@ func (cli *DogestryCli) WorkDirGivenBaseDir(basedir, suffix string) (string, err
 // WorkDir creates temporary dir
 func (cli *DogestryCli) WorkDir(suffix string) (string, error) {
 	suffix = strings.Replace(suffix, ":", "_", -1)
-	basedir := cli.CreateAndReturnTempDir()
+
+	basedir, err := cli.CreateAndReturnTempDir()
+	if err != nil {
+		return "", err
+	}
 
 	return cli.WorkDirGivenBaseDir(basedir, suffix)
 }

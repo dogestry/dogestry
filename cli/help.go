@@ -23,6 +23,7 @@ const HelpMessage string = `Usage: dogestry [OPTIONS] COMMAND [arg...]
      -address      What address to bind to for dogestry server mode (default: 0.0.0.0)
      -port         What port to use for dogestry server (default: 22375)
      -force-local  Do *not* attempt to utilize remote Dogestry servers (default: false)
+     -tempdir      What directory dogestry will use for stroring temporary files
 
   Typical S3 Usage:
      dogestry push s3://<bucket name>/<path name>/?region=us-east-1 <image name>
