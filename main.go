@@ -37,6 +37,7 @@ var (
 	flServerAddress  string
 	flServerPort     int
 	flForceLocal     bool
+	flTempDir        string
 )
 
 func init() {
@@ -55,6 +56,7 @@ func init() {
 	flag.StringVar(&flServerAddress, "address", "0.0.0.0", "what address to bind to when running dogestry in server mode")
 	flag.IntVar(&flServerPort, "port", 22375, "what port to bind to when running dogestry in server mode")
 	flag.BoolVar(&flForceLocal, "force-local", false, "do not try to use the dogestry server on host endpoints")
+	flag.StringVar(&flTempDir, "tempdir", "", "where to store temporary files created by dogestry")
 }
 
 func main() {
@@ -78,7 +80,7 @@ func main() {
 
 		log.Printf("Running dogestry in server mode on '%v'", fullAddress)
 
-		s := server.New(fullAddress)
+		s := server.New(fullAddress, flTempDir)
 		s.ServeHttp()
 	} else {
 		args := flag.Args()
@@ -95,7 +97,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		dogestryCli, err := cli.NewDogestryCli(cfg, flPullHosts)
+		dogestryCli, err := cli.NewDogestryCli(cfg, flPullHosts, flTempDir)
 		if err != nil {
 			log.Fatal(err)
 		}

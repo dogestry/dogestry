@@ -27,12 +27,14 @@ type JSONStatus struct {
 
 type Server struct {
 	ListenAddress string
+	TempDir       string
 }
 
-func New(listenAddress string) *Server {
+func New(listenAddress string, tempDir string) *Server {
 	s := &Server{}
 
 	s.ListenAddress = listenAddress
+	s.TempDir = tempDir
 
 	return s
 }
@@ -75,7 +77,7 @@ func (s *Server) pullHandler(response http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	dogestryCli, err := cli.NewDogestryCli(cfg, make([]string, 0))
+	dogestryCli, err := cli.NewDogestryCli(cfg, make([]string, 0), s.TempDir)
 	if err != nil {
 		response.Write(s.errorJSON(err.Error()))
 		return

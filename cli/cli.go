@@ -60,7 +60,7 @@ func newDockerClient(host string) (*docker.Client, error) {
 	return newClient, err
 }
 
-func NewDogestryCli(cfg config.Config, hosts []string) (*DogestryCli, error) {
+func NewDogestryCli(cfg config.Config, hosts []string, tempDir string) (*DogestryCli, error) {
 	var err error
 
 	dogestryCli := &DogestryCli{
@@ -68,6 +68,21 @@ func NewDogestryCli(cfg config.Config, hosts []string) (*DogestryCli, error) {
 		err:        os.Stderr,
 		DockerHost: cfg.Docker.Connection,
 		PullHosts:  hosts,
+		TempDir:    tempDir,
+	}
+
+	// Verify we were given a real dir - abort quickly and early on
+	if dogestryCli.TempDir != "" {
+		fInfo, err := os.Stat(dogestryCli.TempDir)
+		if err != nil {
+			log.Fatalf("Unable to verify temp dir: %v", err)
+			return nil, err
+		}
+
+		if !fInfo.IsDir() {
+			errMsg := fmt.Errorf("Temp dir %v is not a directory!", dogestryCli.TempDir)
+			return nil, errMsg
+		}
 	}
 
 	dogestryCli.Client, err = newDockerClient(dogestryCli.DockerHost)
