@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/dogestry/dogestry/cli"
 	"github.com/dogestry/dogestry/config"
@@ -39,7 +40,7 @@ func New(listenAddress string, tempDir string) *Server {
 	return s
 }
 
-func (s *Server) errorJSON(msg string) []byte {
+func errorJSON(msg string) []byte {
 	problem := JSONError{
 		ErrorMessage: msg,
 		Detail: JSONErrorDetail{
@@ -53,7 +54,7 @@ func (s *Server) errorJSON(msg string) []byte {
 	return bytes
 }
 
-func (s *Server) statusJSON(msg string) []byte {
+func statusJSON(msg string) []byte {
 	status := struct {
 		Status string `json:"status"`
 	}{
@@ -63,7 +64,6 @@ func (s *Server) statusJSON(msg string) []byte {
 	bytes, _ := json.Marshal(status)
 
 	return bytes
-
 }
 
 func (s *Server) pullHandler(response http.ResponseWriter, req *http.Request) {
@@ -73,32 +73,51 @@ func (s *Server) pullHandler(response http.ResponseWriter, req *http.Request) {
 
 	cfg, err := config.NewServerConfig(req.Header.Get("X-Registry-Auth"))
 	if err != nil {
-		response.Write(s.errorJSON(err.Error()))
+		response.Write(errorJSON(err.Error()))
 		return
 	}
 
 	dogestryCli, err := cli.NewDogestryCli(cfg, make([]string, 0), s.TempDir)
 	if err != nil {
-		response.Write(s.errorJSON(err.Error()))
+		response.Write(errorJSON(err.Error()))
 		return
 	}
 
 	image := req.URL.Query().Get("fromImage")
 
-	response.Write(s.statusJSON(fmt.Sprintf("Pulling %s from S3...", image)))
+	response.Write(statusJSON(fmt.Sprintf("Pulling %s from S3...", image)))
 
 	// Try to flush
 	if f, ok := response.(http.Flusher); ok {
 		f.Flush()
 	}
 
+	quit := make(chan bool)
+	go outputWriter(dogestryCli, response, quit)
+
 	if err := dogestryCli.CmdPull(cfg.AWS.S3URL.String(), image); err != nil {
 		fmt.Printf("Error pulling image from S3: %v\n", err.Error())
-		response.Write(s.errorJSON("Dogestry server error: " + err.Error()))
+		response.Write(errorJSON("Dogestry server error: " + err.Error()))
+		quit <-true
 		return
 	}
 
-	response.Write(s.statusJSON("Done"))
+	quit <-true
+	response.Write(statusJSON("Done"))
+}
+
+func outputWriter(dogestryCli *cli.DogestryCli, response http.ResponseWriter, quitChan chan bool) {
+	// Try to grab output if there is any, wait 500ms if not
+	for {
+		select {
+			case msg := <-dogestryCli.OutputChan:
+				response.Write(statusJSON(msg))
+			case <-quitChan:
+				fmt.Println("Finishing request...")
+				return
+			case <-time.After(500 * time.Millisecond):
+		}
+	}
 }
 
 func (s *Server) healthCheckHandler(response http.ResponseWriter, req *http.Request) {
@@ -110,7 +129,7 @@ func (s *Server) healthCheckHandler(response http.ResponseWriter, req *http.Requ
 func (s *Server) rootHandler(response http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 
-	response.Write(s.errorJSON("Dogestry API, nothing to see here..."))
+	response.Write(errorJSON("Dogestry API, nothing to see here..."))
 }
 
 func (s *Server) ServeHttp() {
