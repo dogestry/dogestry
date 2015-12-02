@@ -103,11 +103,7 @@ func main() {
 		}
 
 		// Print output to the screen
-		go func(dogestryCli *cli.DogestryCli) {
-			for data := range dogestryCli.OutputChan {
-				fmt.Print(data)
-			}
-		}(dogestryCli)
+		dogestryCli.RunTerminalOutput()
 
 		if flLockFile != "" {
 			utils.LockByFile(dogestryCli, args, flLockFile)

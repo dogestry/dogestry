@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -130,6 +131,47 @@ func (cli *DogestryCli) Print(data ...string) {
 	}
 }
 
+// Runs in the background, printing to stdout whatever appears on the OutputChan.
+// Returns when the OutputChan is closed.
+func (cli *DogestryCli) RunTerminalOutput() {
+	go func() {
+		for data := range cli.OutputChan {
+			fmt.Println(data)
+		}
+	}()
+}
+
+// Runs in the background, sending JSON messages to the response socket.
+// Returns when the quitChan receives.
+func (cli *DogestryCli) RunHttpOutput(response http.ResponseWriter, quitChan chan bool) {
+	statusJSON := func(msg string) []byte {
+		status := struct {
+			Status string `json:"status"`
+		}{
+			Status: msg,
+		}
+		bytes, _ := json.Marshal(status)
+
+		return bytes
+	}
+
+	go func() {
+		// Try to grab output if there is any, wait 500ms if not
+		for {
+			select {
+				case msg := <-cli.OutputChan:
+					response.Write(statusJSON(msg))
+					if f, ok := response.(http.Flusher); ok {
+						f.Flush()
+					}
+				case <-quitChan:
+					return
+				case <-time.After(500 * time.Millisecond):
+			}
+		}
+	}()
+}
+
 func (cli *DogestryCli) getMethod(name string) (func(...string) error, bool) {
 	methodName := "Cmd" + strings.ToUpper(name[:1]) + strings.ToLower(name[1:])
 	method := reflect.ValueOf(cli).MethodByName(methodName)
@@ -179,7 +221,7 @@ func (cli *DogestryCli) WorkDirGivenBaseDir(basedir, suffix string) (string, err
 
 	path := filepath.Join(basedir, suffix)
 
-	cli.Print(fmt.Sprintf("WorkDir: %v\n", path))
+	cli.Print(fmt.Sprintf("WorkDir: %v", path))
 
 	if err := os.MkdirAll(path, os.ModeDir|0700); err != nil {
 		return "", err
@@ -216,7 +258,7 @@ func (cli *DogestryCli) getLayerIdsToDownload(fromId remote.ID, imageRoot string
 
 	err := r.WalkImages(fromId, func(id remote.ID, image docker.Image, err error) error {
 		cli.Print(
-			fmt.Sprintf("Examining id '%s' on remote docker host...\n", id.Short()),
+			fmt.Sprintf("Examining id '%s' on remote docker host...", id.Short()),
 		)
 		if err != nil {
 			return err
@@ -231,7 +273,7 @@ func (cli *DogestryCli) getLayerIdsToDownload(fromId remote.ID, imageRoot string
 			return err
 		} else {
 			cli.Print(
-				fmt.Sprintf("Docker host already has id '%s', stop scanning.\n", id.Short()),
+				fmt.Sprintf("Docker host already has id '%s', stop scanning.", id.Short()),
 			)
 			return remote.BreakWalk
 		}
@@ -252,7 +294,7 @@ func (cli *DogestryCli) pullImage(fromId remote.ID, imageRoot string, r remote.R
 		downloadPath := filepath.Join(imageRoot, string(id))
 
 		cli.Print(
-			fmt.Sprintf("Pulling image id '%s' to: %v\n", id.Short(), downloadPath),
+			fmt.Sprintf("Pulling image id '%s' to: %v", id.Short(), downloadPath),
 		)
 
 		err := r.PullImageId(id, downloadPath)
@@ -405,7 +447,7 @@ func (cli *DogestryCli) makeDownloadMap(r remote.Remote, id remote.ID, imageRoot
 
 	for i, pullHost := range cli.PullClients {
 		cli.Print(
-			fmt.Sprintf("Connecting to remote docker host: %v\n", cli.PullHosts[i]),
+			fmt.Sprintf("Connecting to remote docker host: %v", cli.PullHosts[i]),
 		)
 
 		layers, err := cli.getLayerIdsToDownload(id, imageRoot, r, pullHost)
@@ -427,7 +469,7 @@ func (cli *DogestryCli) downloadImages(r remote.Remote, downloadMap DownloadMap,
 		downloadPath := filepath.Join(imageRoot, string(id))
 
 		cli.Print(
-			fmt.Sprintf("Pulling image id '%s' to: %v\n", id.Short(), downloadPath),
+			fmt.Sprintf("Pulling image id '%s' to: %v", id.Short(), downloadPath),
 		)
 
 		err := r.PullImageId(id, downloadPath)
@@ -438,7 +480,7 @@ func (cli *DogestryCli) downloadImages(r remote.Remote, downloadMap DownloadMap,
 
 	if len(pullImagesErrMap) > 0 {
 		cli.Print(
-			fmt.Sprintf("Errors pulling images: %v\n", pullImagesErrMap),
+			fmt.Sprintf("Errors pulling images: %v", pullImagesErrMap),
 		)
 		return fmt.Errorf("Error downloading files from S3")
 	}

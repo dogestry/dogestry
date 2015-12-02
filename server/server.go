@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/dogestry/dogestry/cli"
 	"github.com/dogestry/dogestry/config"
@@ -93,31 +92,17 @@ func (s *Server) pullHandler(response http.ResponseWriter, req *http.Request) {
 	}
 
 	quit := make(chan bool)
-	go outputWriter(dogestryCli, response, quit)
+	dogestryCli.RunHttpOutput(response, quit)
 
 	if err := dogestryCli.CmdPull(cfg.AWS.S3URL.String(), image); err != nil {
 		fmt.Printf("Error pulling image from S3: %v\n", err.Error())
 		response.Write(errorJSON("Dogestry server error: " + err.Error()))
-		quit <-true
+		quit <- true
 		return
 	}
 
-	quit <-true
+	quit <- true
 	response.Write(statusJSON("Done"))
-}
-
-func outputWriter(dogestryCli *cli.DogestryCli, response http.ResponseWriter, quitChan chan bool) {
-	// Try to grab output if there is any, wait 500ms if not
-	for {
-		select {
-			case msg := <-dogestryCli.OutputChan:
-				response.Write(statusJSON(msg))
-			case <-quitChan:
-				fmt.Println("Finishing request...")
-				return
-			case <-time.After(500 * time.Millisecond):
-		}
-	}
 }
 
 func (s *Server) healthCheckHandler(response http.ResponseWriter, req *http.Request) {
