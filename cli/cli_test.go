@@ -15,7 +15,7 @@ func TestNewDogestryCli(t *testing.T) {
 		t.Fatalf("Creating dogestry config should work. Error: %v", err)
 	}
 
-	dogestryCli, err := NewDogestryCli(cfg, hosts)
+	dogestryCli, err := NewDogestryCli(cfg, hosts, "/tmp")
 	if err != nil {
 		t.Fatalf("Creating dogestryCli struct should work. Error: %v", err)
 	}
@@ -31,10 +31,10 @@ func TestCreateAndReturnTempDirAndCleanup(t *testing.T) {
 		t.Fatalf("Creating dogestry config should work. Error: %v", err)
 	}
 
-	dogestryCli, _ := NewDogestryCli(cfg, hosts)
+	dogestryCli, _ := NewDogestryCli(cfg, hosts, "/tmp")
 
-	tmpDir := dogestryCli.CreateAndReturnTempDir()
-	if tmpDir == "" {
+	tmpDir, err := dogestryCli.CreateAndReturnTempDir()
+	if tmpDir == "" || err != nil {
 		t.Fatalf("CreateAndReturnTempDir should always return path to tmp directory. tmpDir: %v", tmpDir)
 	}
 
