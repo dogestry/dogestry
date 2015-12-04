@@ -159,14 +159,14 @@ func (cli *DogestryCli) RunHttpOutput(response http.ResponseWriter, quitChan cha
 		// Try to grab output if there is any, wait 500ms if not
 		for {
 			select {
-				case msg := <-cli.OutputChan:
-					response.Write(statusJSON(msg))
-					if f, ok := response.(http.Flusher); ok {
-						f.Flush()
-					}
-				case <-quitChan:
-					return
-				case <-time.After(500 * time.Millisecond):
+			case msg := <-cli.OutputChan:
+				response.Write(statusJSON(msg))
+				if f, ok := response.(http.Flusher); ok {
+					f.Flush()
+				}
+			case <-quitChan:
+				return
+			case <-time.After(500 * time.Millisecond):
 			}
 		}
 	}()
