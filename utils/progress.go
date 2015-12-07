@@ -18,15 +18,35 @@ type ProgressReader struct {
 	LastUpdate     int64
 	UpdateInterval int64
 	FileName       string
+	outputChan     chan string
 }
 
-func NewProgressReader(r io.Reader, size int64, fileName string) io.Reader {
-	return &ProgressReader{r, size, 0, 0, defaultInterval, fileName}
+func NewProgressReader(r io.Reader, size int64, fileName string, outputChan chan string) io.Reader {
+	return &ProgressReader{
+		r:              r,
+		TotalSize:      size,
+		Current:        0,
+		LastUpdate:     0,
+		UpdateInterval: defaultInterval,
+		FileName:       fileName,
+		outputChan:     outputChan,
+	}
 }
 
-func printProgress(progress, total int64, fileName string) {
+func (p *ProgressReader) printProgress(progress, total int64, fileName string) {
 	calc := fmt.Sprintf("%s/%s", HumanSize(progress), HumanSize(total))
-	progressLogger.Printf("  %-17s : %s\n", calc, fileName)
+	p.Print(fmt.Sprintf("  %-17s : %s", calc, fileName))
+}
+
+// Print messages to output channel (if available), otherwise via log.Print()
+func (p *ProgressReader) Print(data ...string) {
+	if p.outputChan != nil {
+		for _, entry := range data {
+			p.outputChan <- entry
+		}
+	} else {
+		log.Println(data)
+	}
 }
 
 func (p *ProgressReader) Read(in []byte) (n int, err error) {
@@ -34,16 +54,17 @@ func (p *ProgressReader) Read(in []byte) (n int, err error) {
 	p.Current += int64(n)
 
 	if p.Current-p.LastUpdate > p.UpdateInterval {
-		printProgress(p.Current, p.TotalSize, p.FileName)
+		p.printProgress(p.Current, p.TotalSize, p.FileName)
 		p.LastUpdate = p.Current
 	}
 
 	if err != nil {
-		printProgress(p.Current, p.TotalSize, p.FileName)
+		p.printProgress(p.Current, p.TotalSize, p.FileName)
+
 		if err == io.EOF {
-			progressLogger.Printf("  %-17s : %s\n", "DONE", p.FileName)
+			p.Print(fmt.Sprintf("  %-17s : %s", "DONE", p.FileName))
 		} else {
-			progressLogger.Printf("  %-17s: %s: %v\n", "ERROR", p.FileName, err)
+			p.Print(fmt.Sprintf("  %-17s: %s: %v", "ERROR", p.FileName, err))
 		}
 	}
 

@@ -56,8 +56,8 @@ type Remote interface {
 	List() ([]Image, error)
 }
 
-func NewRemote(config config.Config) (Remote, error) {
-	remote, err := NewS3Remote(config)
+func NewRemote(config config.Config, outputChan chan string) (Remote, error) {
+	remote, err := NewS3Remote(config, outputChan)
 	if err != nil {
 		return nil, err
 	}

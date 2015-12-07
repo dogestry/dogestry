@@ -226,41 +226,40 @@ func (cli *DogestryCli) RegularPull(image string) error {
 		return err
 	}
 
-	r, err := remote.NewRemote(cli.Config)
+	r, err := remote.NewRemote(cli.Config, cli.OutputChan)
 	if err != nil {
 		return err
 	}
 
-	cli.Print(fmt.Sprintf("Using docker endpoints for pull: %v\n", cli.PullHosts))
-	cli.Print(fmt.Sprintf("S3 Connection: %v\n", r.Desc()))
-
-	cli.Print(fmt.Sprintf("Image tag: %v\n", image))
+	cli.Print(fmt.Sprintf("Using docker endpoints for pull: %v", cli.PullHosts))
+	cli.Print(fmt.Sprintf("S3 Connection: %v", r.Desc()))
+	cli.Print(fmt.Sprintf("Image tag: %v", image))
 
 	id, err := r.ResolveImageNameToId(image)
 	if err != nil {
 		return err
 	}
 
-	cli.Print(fmt.Sprintf("Image '%s' resolved to ID '%s'\n", image, id.Short()))
+	cli.Print(fmt.Sprintf("Image '%s' resolved to ID '%s'", image, id.Short()))
 
-	cli.Print("Determining which images need to be downloaded from S3...\n")
+	cli.Print("Determining which images need to be downloaded from S3...")
 	downloadMap, err := cli.makeDownloadMap(r, id, imageRoot)
 	if err != nil {
 		return err
 	}
 
-	cli.Print("Downloading images from S3...\n")
+	cli.Print("Downloading images from S3...")
 	if err := cli.downloadImages(r, downloadMap, imageRoot); err != nil {
 		return err
 	}
 
-	cli.Print("Generating repositories JSON file...\n")
+	cli.Print("Generating repositories JSON file...")
 	if err := cli.createRepositoriesJsonFile(image, imageRoot, r); err != nil {
 		return err
 	}
 
 	cli.Print(
-		fmt.Sprintf("Importing image(%s) TAR file to docker hosts: %v\n", id.Short(), cli.PullHosts),
+		fmt.Sprintf("Importing image(%s) TAR file to docker hosts: %v", id.Short(), cli.PullHosts),
 	)
 	if err := cli.sendTar(imageRoot); err != nil {
 		return err

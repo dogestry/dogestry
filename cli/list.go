@@ -36,7 +36,7 @@ func (cli *DogestryCli) CmdList(args ...string) error {
 
 	cli.Config.SetS3URL(S3URL)
 
-	r, err := remote.NewRemote(cli.Config)
+	r, err := remote.NewRemote(cli.Config, nil)
 	if err != nil {
 		return err
 	}

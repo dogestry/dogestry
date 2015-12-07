@@ -19,7 +19,7 @@ import (
 	"github.com/rlmcpherson/s3gof3r"
 )
 
-func NewS3Remote(config config.Config) (*S3Remote, error) {
+func NewS3Remote(config config.Config, outputChan chan string) (*S3Remote, error) {
 	s3, err := newS3Client(config)
 	if err != nil {
 		return &S3Remote{}, err
@@ -35,6 +35,7 @@ func NewS3Remote(config config.Config) (*S3Remote, error) {
 		BucketName:           config.AWS.S3URL.Host,
 		client:               s3,
 		uploadDownloadClient: s3gof3r.New("", s3gof3rKeys),
+		outputChan:           outputChan,
 	}, nil
 }
 
@@ -44,6 +45,7 @@ type S3Remote struct {
 	Bucket               *s3.Bucket
 	client               *s3.S3
 	uploadDownloadClient *s3gof3r.S3
+	outputChan           chan string
 }
 
 var (
@@ -232,8 +234,8 @@ func (remote *S3Remote) WalkImages(id ID, walker ImageWalkFn) error {
 func (remote *S3Remote) ImageMetadata(id ID) (docker.Image, error) {
 	bucket := remote.getBucket()
 	image := docker.Image{}
-	
-	files := []string{ "json", "layer.tar", "VERSION" }
+
+	files := []string{"json", "layer.tar", "VERSION"}
 	for i := 0; i < len(files); i++ {
 		exists, err := bucket.Exists(path.Join(remote.imagePath(id), files[i]))
 		if err != nil {
@@ -243,7 +245,7 @@ func (remote *S3Remote) ImageMetadata(id ID) (docker.Image, error) {
 			return image, ErrNoSuchImage
 		}
 	}
-	
+
 	jsonPath := path.Join(remote.imagePath(id), "json")
 
 	imageJson, err := bucket.Get(jsonPath)
@@ -422,7 +424,7 @@ func (remote *S3Remote) putFile(src string, key *keyDef) error {
 		return err
 	}
 
-	progressReader := utils.NewProgressReader(f, finfo.Size(), src)
+	progressReader := utils.NewProgressReader(f, finfo.Size(), src, nil)
 
 	// Open a PutWriter for actual file upload
 	w, err := remote.getUploadDownloadBucket().PutWriter(dstKey, nil, nil)
@@ -469,7 +471,7 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
 
 // get a single file from the s3 bucket
 func (remote *S3Remote) getFile(dst string, key *keyDef) error {
-	log.Printf("Pulling key %s (%s)\n", key.key, utils.HumanSize(key.s3Key.Size))
+	remote.Print(fmt.Sprintf("Pulling key %s (%s)", key.key, utils.HumanSize(key.s3Key.Size)))
 
 	from, _, err := remote.getUploadDownloadBucket().GetReader(key.key, nil)
 	if err != nil {
@@ -486,7 +488,7 @@ func (remote *S3Remote) getFile(dst string, key *keyDef) error {
 		return err
 	}
 
-	progressReader := utils.NewProgressReader(from, key.s3Key.Size, key.key)
+	progressReader := utils.NewProgressReader(from, key.s3Key.Size, key.key, remote.outputChan)
 
 	_, err = io.Copy(to, progressReader)
 	if err != nil {
@@ -508,6 +510,17 @@ func (remote *S3Remote) imagePath(id ID) string {
 
 func (remote *S3Remote) remoteKey(key string) string {
 	return key
+}
+
+// Print messages to output channel (if available), otherwise via log.Print()
+func (remote *S3Remote) Print(data ...string) {
+	if remote.outputChan != nil {
+		for _, entry := range data {
+			remote.outputChan <- entry
+		}
+	} else {
+		log.Println(data)
+	}
 }
 
 func (remote *S3Remote) List() (images []Image, err error) {
