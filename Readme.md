@@ -2,7 +2,7 @@
 
 # Dogestry
 
-Simple CLI app + server for storing and retrieiving Docker image(s) from Amazon S3.
+Simple CLI app + server for storing and retrieving Docker image(s) from Amazon S3.
 
 ## Prerequisites
 
