@@ -2,13 +2,15 @@ package cli
 
 import (
 	"bufio"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
-	"os/user"
+	"path/filepath"
 	"strings"
+
+	"github.com/docker/docker/cliconfig"
+	homedir "github.com/mitchellh/go-homedir"
 )
 
 const LoginHelpMessage string = `  Save AWS credentials for REGISTRY.
@@ -19,13 +21,9 @@ const LoginHelpMessage string = `  Save AWS credentials for REGISTRY.
   Examples:
     dogestry login registry.example.com`
 
-type ConfigFile struct {
-	AuthConfigs map[string]AuthEntry `json:"auths"`
-}
-
-type AuthEntry struct {
-	Auth  string `json:"auth"`
-	Email string `json:"email"`
+type CompatConfigFile struct {
+	*cliconfig.ConfigFile
+	filename string
 }
 
 func (cli *DogestryCli) CmdLogin(args ...string) error {
@@ -42,13 +40,13 @@ func (cli *DogestryCli) CmdLogin(args ...string) error {
 
 	url := loginFlags.Arg(0)
 
-	// Try to locate a .dockercfg
-	dockerFile, cfgErr := LocateDockerCfg()
+	// Try to locate a docker config
+	dockerCfg, cfgErr := CompatLoad()
 	if cfgErr != nil {
 		return cfgErr
 	}
 
-	fmt.Printf("Updating docker file %v...\n", dockerFile)
+	fmt.Printf("Updating docker file %v...\n", dockerCfg.filename)
 
 	// Get input
 	loginInfo, inputErr := GetLoginInput()
@@ -56,50 +54,19 @@ func (cli *DogestryCli) CmdLogin(args ...string) error {
 		return inputErr
 	}
 
-	// Update .dockercfg
-	if err := UpdateDockerCfg(url, dockerFile, loginInfo); err != nil {
+	authconfig, ok := dockerCfg.AuthConfigs[url]
+	if !ok {
+		authconfig = cliconfig.AuthConfig{}
+	}
+	authconfig.Username = loginInfo["AWS_ACCESS_KEY"]
+	authconfig.Password = loginInfo["AWS_SECRET_KEY"]
+	authconfig.Email = loginInfo["S3_URL"]
+	authconfig.ServerAddress = url
+	dockerCfg.AuthConfigs[url] = authconfig
+
+	// Update docker config
+	if err := dockerCfg.CompatSave(); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func UpdateDockerCfg(url, dockerFile string, loginInfo map[string]string) error {
-	// Read the contents of the file
-	authConfig := make(map[string]*AuthEntry)
-
-	if _, err := os.Stat(dockerFile); err == nil {
-		fileContents, readErr := ioutil.ReadFile(dockerFile)
-		if readErr != nil {
-			return fmt.Errorf("Unable to read existing docker config: %v", readErr)
-		}
-
-		if err := json.Unmarshal(fileContents, &authConfig); err != nil {
-			return fmt.Errorf("Unable to parse existing docker config: %v", err)
-		}
-	}
-
-	// Encode data
-	authString := loginInfo["AWS_ACCESS_KEY"] + ":" + loginInfo["AWS_SECRET_KEY"]
-
-	encoded := base64.StdEncoding.EncodeToString([]byte(authString))
-
-	// Update authConfig
-	if _, ok := authConfig[url]; !ok {
-		authConfig[url] = &AuthEntry{}
-	}
-
-	authConfig[url].Auth = encoded
-	authConfig[url].Email = loginInfo["S3_URL"]
-
-	jsonData, marshalErr := json.MarshalIndent(authConfig, "", "\t")
-	if marshalErr != nil {
-		return fmt.Errorf("Unable to generate new JSON .dockercfg: %v", marshalErr)
-	}
-
-	// Save it all
-	if err := ioutil.WriteFile(dockerFile, jsonData, 0600); err != nil {
-		return fmt.Errorf("Unable to write new .dockercfg: %v", err)
 	}
 
 	return nil
@@ -126,24 +93,82 @@ func GetLoginInput() (map[string]string, error) {
 	return loginInfo, nil
 }
 
-func LocateDockerCfg() (string, error) {
-	usr, err := user.Current()
+func (configFile *CompatConfigFile) CompatSave() error {
+	if strings.HasSuffix(configFile.filename, ".dockercfg") {
+		if err := os.MkdirAll(filepath.Dir(configFile.filename), 0700); err != nil {
+			return err
+		}
+		f, err := os.OpenFile(configFile.filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		return configFile.LegacySaveToWriter(f)
+	}
+
+	return configFile.Save()
+}
+
+func (configFile *CompatConfigFile) LegacySaveToWriter(writer io.Writer) error {
+	// Encode sensitive data into a new/temp struct
+	tmpAuthConfigs := make(map[string]cliconfig.AuthConfig, len(configFile.AuthConfigs))
+	for k, authConfig := range configFile.AuthConfigs {
+		authCopy := authConfig
+		// encode and save the authstring, while blanking out the original fields
+		authCopy.Auth = cliconfig.EncodeAuth(&authCopy)
+		authCopy.Username = ""
+		authCopy.Password = ""
+		authCopy.ServerAddress = ""
+		tmpAuthConfigs[k] = authCopy
+	}
+
+	saveAuthConfigs := configFile.AuthConfigs
+	configFile.AuthConfigs = tmpAuthConfigs
+	defer func() { configFile.AuthConfigs = saveAuthConfigs }()
+
+	data, err := json.MarshalIndent(configFile.AuthConfigs, "", "\t")
 	if err != nil {
-		return "", err
+		return err
+	}
+	_, err = writer.Write(data)
+	return err
+}
+
+func CompatLoad() (*CompatConfigFile, error) {
+	dockerCfg := cliconfig.NewConfigFile(filepath.Join(cliconfig.ConfigDir(), cliconfig.ConfigFileName))
+	configFile := CompatConfigFile{
+		dockerCfg,
+		dockerCfg.Filename(),
 	}
 
-	// Check if .config dir exists
-	s, err := os.Stat(usr.HomeDir + "/.docker")
+	// Try .docker/config.json first
+	if _, err := os.Stat(configFile.filename); err == nil {
+		file, err := os.Open(configFile.filename)
+		if err != nil {
+			return &configFile, err
+		}
+		defer file.Close()
+		err = configFile.LoadFromReader(file)
+		return &configFile, err
+	} else if !os.IsNotExist(err) {
+		return &configFile, err
+	}
+
+	// Try the old .dockercfg
+	homeDir, _ := homedir.Dir()
+	configFile.filename = filepath.Join(homeDir, ".dockercfg")
+	if _, err := os.Stat(configFile.filename); err != nil {
+		return &configFile, nil //missing file is not an error
+	}
+	file, err := os.Open(configFile.filename)
 	if err != nil {
-		// File/dir does not exist, fall back
-		return usr.HomeDir + "/.dockercfg", nil
+		return &configFile, err
+	}
+	defer file.Close()
+	err = configFile.LegacyLoadFromReader(file)
+	if err != nil {
+		return &configFile, err
 	}
 
-	// Exists, but is it a dir?
-	if s.IsDir() {
-		return usr.HomeDir + "/.docker/config", nil
-	}
-
-	// Not a dir, fall back
-	return usr.HomeDir + "/.dockercfg", nil
+	return &configFile, nil
 }
