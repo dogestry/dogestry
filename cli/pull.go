@@ -42,33 +42,63 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 
 	cli.Config.SetS3URL(S3URL)
 
+	// We are not a client, perform pull without any further host-related checks.
+	//
+	// Note: There is a possibility that a Docker host is not available but in
+	// order to avoid double checks (client and server side), we opt to not
+	// perform host checks when running in server mode)
+	if cli.Config.ServerMode {
+		fmt.Printf("Handling new pull request for image: %v\n", image)
+		return cli.RegularPull(image)
+	}
+
+	hosts := utils.ParseHosts(cli.PullHosts)
+	checkTimeout := time.Duration(1) * time.Second
+
+	// Perform docker health check (if -disable-checks is disabled (default))
+	if !cli.Config.DisableChecks {
+		if err := cli.CheckHosts(hosts, checkTimeout, true); err != nil {
+			return fmt.Errorf("Pull aborted: %v", err)
+		}
+	}
+
 	// Perform regular pull if we are explicitly told to _not_ use dogestry server(s)
 	if cli.Config.ForceLocal {
 		fmt.Println("Performing regular dogestry pull (dogestry server use disabled)...")
 		return cli.RegularPull(image)
 	}
 
-	// Let's try to use dogestry server(s)!
-	hosts := utils.ParseHostnames(cli.PullHosts)
+	// Check if all hosts running Dogestry server
+	if err := cli.CheckHosts(hosts, checkTimeout, false); err != nil {
+		fmt.Println("Performing regular dogestry pull (one or more hosts is not running dogestry server)!")
+		return cli.RegularPull(image)
+	} else {
+		fmt.Println("Detected dogestry server on all pullhosts!")
+		return cli.DogestryPull(hosts, image)
+	}
+}
 
-	haveDogestry := make([]string, 0)
-	checkTimeout := time.Duration(1) * time.Second
+func (cli *DogestryCli) CheckHosts(hosts map[string]int, timeout time.Duration, docker bool) error {
+	service := "Docker"
 
-	// Check which hosts are running the dogestry server
-	for _, host := range hosts {
-		if utils.DogestryServerCheck(host, cli.Config.ServerPort, checkTimeout) {
-			haveDogestry = append(haveDogestry, host)
+	if !docker {
+		service = "Dogestry"
+	}
+
+	for host, port := range hosts {
+		remotePort := port
+
+		// Check the dogestry port instead
+		if !docker {
+			remotePort = cli.Config.ServerPort
+		}
+
+		if !utils.ServerCheck(host, remotePort, timeout, docker) {
+			return fmt.Errorf("%v:%v does not appear to be running %v", host, port, service)
 		}
 	}
 
-	// Only perform "server pull" if all hosts are running dogestry server
-	if len(haveDogestry) == len(cli.PullHosts) {
-		fmt.Println("Detected dogestry server on all pullhosts!")
-		return cli.DogestryPull(hosts, image)
-	} else {
-		fmt.Println("Performing regular dogestry pull (one or more hosts is not running dogestry server)!")
-		return cli.RegularPull(image)
-	}
+	return nil
 }
 
 type HostErrTuple struct {
@@ -76,7 +106,7 @@ type HostErrTuple struct {
 	Err    error
 }
 
-func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
+func (cli *DogestryCli) DogestryPull(hosts map[string]int, image string) error {
 	// Generate our auth header
 	authHeader, headerErr := cli.GenerateAuthHeader()
 	if headerErr != nil {
@@ -85,7 +115,7 @@ func (cli *DogestryCli) DogestryPull(hosts []string, image string) error {
 
 	tupleChan := make(chan *HostErrTuple, 1)
 
-	for _, host := range hosts {
+	for host, _ := range hosts {
 		fmt.Printf("Launching goroutine for pulling image on %v...\n", host)
 
 		fullURL := fmt.Sprintf("http://%v:%v/1.19/images/create?fromImage=%v", host,
