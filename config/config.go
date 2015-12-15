@@ -9,6 +9,10 @@ import (
 	"os"
 )
 
+const (
+	S3DefaultRegion string = "us-east-1"
+)
+
 func NewConfig(useMetaService bool, serverPort int, forceLocal, requireEnvVars bool) (Config, error) {
 	c := Config{}
 	c.AWS.AccessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
@@ -100,6 +104,7 @@ type Config struct {
 		AccessKeyID     string
 		SecretAccessKey string
 		UseMetaService  bool
+		Region          string
 	}
 	Docker struct {
 		Connection string
@@ -113,6 +118,14 @@ func (c *Config) SetS3URL(rawurl string) error {
 	}
 
 	c.AWS.S3URL = urlStruct
+
+	regQuery := urlStruct.Query()["region"]
+
+	if len(regQuery) > 0 && regQuery[0] != "" {
+		c.AWS.Region = regQuery[0]
+	} else {
+		c.AWS.Region = S3DefaultRegion
+	}
 
 	return nil
 }

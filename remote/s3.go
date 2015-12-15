@@ -2,6 +2,7 @@ package remote
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -25,16 +26,16 @@ func NewS3Remote(config config.Config) (*S3Remote, error) {
 		return &S3Remote{}, err
 	}
 
-	s3gof3rKeys, err := getS3gof3rKeys(config)
+	udClient, err := newUploadDownlaodClient(config)
 	if err != nil {
-		return &S3Remote{}, err
+		return nil, err
 	}
 
 	return &S3Remote{
 		config:               config,
 		BucketName:           config.AWS.S3URL.Host,
 		client:               s3,
-		uploadDownloadClient: s3gof3r.New("", s3gof3rKeys),
+		uploadDownloadClient: udClient,
 	}, nil
 }
 
@@ -50,12 +51,23 @@ var (
 	S3DefaultRegion = "us-east-1"
 )
 
-func getS3gof3rKeys(config config.Config) (s3gof3r.Keys, error) {
-	if config.AWS.UseMetaService {
-		return s3gof3r.InstanceKeys()
-	} else {
-		return s3gof3r.Keys{AccessKey: config.AWS.AccessKeyID, SecretKey: config.AWS.SecretAccessKey}, nil
+func newUploadDownlaodClient(config config.Config) (*s3gof3r.S3, error) {
+	s3gKeys, err := getS3gof3rKeys(config)
+	if err != nil {
+		return nil, err
 	}
+
+	var s3domain string
+
+	// We have to do this due to a recent region related change in s3gof3r:
+	// https://github.com/rlmcpherson/s3gof3r/blob/b574ee38528c51c2c8652b79e71245817c59bd61/s3gof3r.go#L28-L43
+	if config.AWS.Region == "us-east-1" {
+		s3domain = ""
+	} else {
+		s3domain = fmt.Sprintf("s3-%v.amazonaws.com", config.AWS.Region)
+	}
+
+	return s3gof3r.New(s3domain, s3gKeys), nil
 }
 
 // create a new s3 client from the url
@@ -65,19 +77,19 @@ func newS3Client(config config.Config) (*s3.S3, error) {
 		return &s3.S3{}, err
 	}
 
-	var regionName string
-
-	regQuery := config.AWS.S3URL.Query()["region"]
-
-	if len(regQuery) > 0 && regQuery[0] != "" {
-		regionName = regQuery[0]
-	} else {
-		regionName = S3DefaultRegion
+	if config.AWS.Region == "" {
+		return nil, errors.New("Region not set for S3 client lib (missing SetS3URL?)")
 	}
 
-	region := aws.Regions[regionName]
+	return s3.New(auth, aws.Regions[config.AWS.Region]), nil
+}
 
-	return s3.New(auth, region), nil
+func getS3gof3rKeys(config config.Config) (s3gof3r.Keys, error) {
+	if config.AWS.UseMetaService {
+		return s3gof3r.InstanceKeys()
+	} else {
+		return s3gof3r.Keys{AccessKey: config.AWS.AccessKeyID, SecretKey: config.AWS.SecretAccessKey}, nil
+	}
 }
 
 func (remote *S3Remote) Validate() error {
@@ -232,8 +244,8 @@ func (remote *S3Remote) WalkImages(id ID, walker ImageWalkFn) error {
 func (remote *S3Remote) ImageMetadata(id ID) (docker.Image, error) {
 	bucket := remote.getBucket()
 	image := docker.Image{}
-	
-	files := []string{ "json", "layer.tar", "VERSION" }
+
+	files := []string{"json", "layer.tar", "VERSION"}
 	for i := 0; i < len(files); i++ {
 		exists, err := bucket.Exists(path.Join(remote.imagePath(id), files[i]))
 		if err != nil {
@@ -243,7 +255,7 @@ func (remote *S3Remote) ImageMetadata(id ID) (docker.Image, error) {
 			return image, ErrNoSuchImage
 		}
 	}
-	
+
 	jsonPath := path.Join(remote.imagePath(id), "json")
 
 	imageJson, err := bucket.Get(jsonPath)
