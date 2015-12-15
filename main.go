@@ -38,6 +38,7 @@ var (
 	flServerPort     int
 	flForceLocal     bool
 	flTempDir        string
+	flDisableChecks  bool
 )
 
 func init() {
@@ -57,6 +58,7 @@ func init() {
 	flag.IntVar(&flServerPort, "port", 22375, "what port to bind to when running dogestry in server mode")
 	flag.BoolVar(&flForceLocal, "force-local", false, "do not try to use the dogestry server on host endpoints")
 	flag.StringVar(&flTempDir, "tempdir", "", "where to store temporary files created by dogestry")
+	flag.BoolVar(&flDisableChecks, "disable-checks", false, "disable health checking of remote Docker hosts during 'pull'")
 }
 
 func main() {
@@ -92,7 +94,7 @@ func main() {
 			requireEnvVars = false
 		}
 
-		cfg, err := config.NewConfig(flUseMetaService, flServerPort, flForceLocal, requireEnvVars)
+		cfg, err := config.NewConfig(flUseMetaService, flServerPort, flForceLocal, requireEnvVars, flDisableChecks)
 		if err != nil {
 			log.Fatal(err)
 		}
