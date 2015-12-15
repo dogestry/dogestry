@@ -19,6 +19,10 @@ import (
 	"github.com/rlmcpherson/s3gof3r"
 )
 
+const (
+	MaxGetFileAttempts int = 3
+)
+
 func NewS3Remote(config config.Config) (*S3Remote, error) {
 	s3, err := newS3Client(config)
 	if err != nil {
@@ -232,8 +236,8 @@ func (remote *S3Remote) WalkImages(id ID, walker ImageWalkFn) error {
 func (remote *S3Remote) ImageMetadata(id ID) (docker.Image, error) {
 	bucket := remote.getBucket()
 	image := docker.Image{}
-	
-	files := []string{ "json", "layer.tar", "VERSION" }
+
+	files := []string{"json", "layer.tar", "VERSION"}
 	for i := 0; i < len(files); i++ {
 		exists, err := bucket.Exists(path.Join(remote.imagePath(id), files[i]))
 		if err != nil {
@@ -243,7 +247,7 @@ func (remote *S3Remote) ImageMetadata(id ID) (docker.Image, error) {
 			return image, ErrNoSuchImage
 		}
 	}
-	
+
 	jsonPath := path.Join(remote.imagePath(id), "json")
 
 	imageJson, err := bucket.Get(jsonPath)
@@ -453,8 +457,7 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
 		relKey := strings.TrimPrefix(key.key, rootKey)
 		relKey = strings.TrimPrefix(relKey, "/")
 
-		err := remote.getFile(filepath.Join(dst, relKey), key)
-		if err != nil {
+		if err := remote.retryGetFile(filepath.Join(dst, relKey), key); err != nil {
 			errMap[key.key] = err
 		}
 	}
@@ -462,6 +465,27 @@ func (remote *S3Remote) getFiles(dst, rootKey string, imageKeys keys) error {
 	if len(errMap) > 0 {
 		log.Printf("Errors during getFiles: %v", errMap)
 		return fmt.Errorf("error downloading files from S3")
+	}
+
+	return nil
+}
+
+// Wrapper for getFile() that implements retry logic (for avoiding random S3 500's)
+func (remote *S3Remote) retryGetFile(dst string, key *keyDef) error {
+	for i := 1; i <= MaxGetFileAttempts; i++ {
+		err := remote.getFile(dst, key)
+		if err != nil {
+			fmt.Printf("Ran into error while pulling from S3 (%v/%v attempts): %v\n",
+				i, MaxGetFileAttempts, err)
+
+			// Final attempt? -> return err
+			if i == MaxGetFileAttempts {
+				return err
+			}
+		} else {
+			// Downloaded success
+			break
+		}
 	}
 
 	return nil
