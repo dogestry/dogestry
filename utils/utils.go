@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -73,10 +74,12 @@ func Sha1File(path string) (string, error) {
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
-// Extract hostnames from a list of pullhost args
-// ie. 'tcp://some.hostname.com:2375', extract 'some.hostname.com'
-func ParseHostnames(pullHosts []string) []string {
-	parsedHosts := make([]string, 0)
+// Extract hostnames and ports from a list of pullhost args
+// ie. 'tcp://some.hostname.com:2375', extract 'some.hostname.com' and '2375'
+//
+// return map[hostname]port
+func ParseHosts(pullHosts []string) map[string]int {
+	parsedHosts := make(map[string]int, 0)
 
 	for _, hostEntry := range pullHosts {
 		parsed, err := url.Parse(hostEntry)
@@ -85,17 +88,26 @@ func ParseHostnames(pullHosts []string) []string {
 		}
 
 		if parsed.Scheme == "tcp" && parsed.Host != "" {
-			hostname := strings.Split(parsed.Host, ":")
-			parsedHosts = append(parsedHosts, hostname[0])
+			splitHost := strings.Split(parsed.Host, ":")
+			port, err := strconv.ParseInt(splitHost[1], 10, 64)
+			if err != nil {
+				continue
+			}
+
+			parsedHosts[splitHost[0]] = int(port)
 		}
 	}
 
 	return parsedHosts
 }
 
-// See if remote Dogestry port is open
-func DogestryServerCheck(host string, port int, timeout time.Duration) bool {
-	url := fmt.Sprintf("http://%v:%v/status/check", host, port)
+// Check if docker (or dogestry) is running on the endpoint
+func ServerCheck(host string, port int, timeout time.Duration, docker bool) bool {
+	url := fmt.Sprintf("http://%v:%v/version", host, port)
+
+	if !docker {
+		url = fmt.Sprintf("http://%v:%v/status/check", host, port)
+	}
 
 	client := http.Client{
 		Timeout: timeout,
@@ -105,16 +117,22 @@ func DogestryServerCheck(host string, port int, timeout time.Duration) bool {
 	if getErr != nil {
 		return false
 	}
-
 	defer resp.Body.Close()
 
-	body, readErr := ioutil.ReadAll(resp.Body)
-	if readErr != nil {
-		return false
-	}
+	if docker {
+		if resp.StatusCode != 200 {
+			return false
+		}
+	} else {
+		// Dogestry check
+		body, readErr := ioutil.ReadAll(resp.Body)
+		if readErr != nil {
+			return false
+		}
 
-	if string(body) != "OK" {
-		return false
+		if string(body) != "OK" {
+			return false
+		}
 	}
 
 	return true
