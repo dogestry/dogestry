@@ -7,15 +7,19 @@ import (
 	"github.com/dogestry/dogestry/config"
 )
 
+const (
+	testTmpDirRoot string = "/tmp"
+)
+
 var hosts = make([]string, 0)
 
 func TestNewDogestryCli(t *testing.T) {
-	cfg, err := config.NewConfig(false, 22375, false, false)
+	cfg, err := config.NewConfig(false, 22375, false, false, false)
 	if err != nil {
 		t.Fatalf("Creating dogestry config should work. Error: %v", err)
 	}
 
-	dogestryCli, err := NewDogestryCli(cfg, hosts)
+	dogestryCli, err := NewDogestryCli(cfg, hosts, testTmpDirRoot)
 	if err != nil {
 		t.Fatalf("Creating dogestryCli struct should work. Error: %v", err)
 	}
@@ -26,14 +30,18 @@ func TestNewDogestryCli(t *testing.T) {
 }
 
 func TestCreateAndReturnTempDirAndCleanup(t *testing.T) {
-	cfg, err := config.NewConfig(false, 22375, false, false)
+	cfg, err := config.NewConfig(false, 22375, false, false, false)
 	if err != nil {
 		t.Fatalf("Creating dogestry config should work. Error: %v", err)
 	}
 
-	dogestryCli, _ := NewDogestryCli(cfg, hosts)
+	dogestryCli, _ := NewDogestryCli(cfg, hosts, testTmpDirRoot)
 
-	tmpDir := dogestryCli.CreateAndReturnTempDir()
+	tmpDir, err := dogestryCli.CreateAndReturnTempDir()
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
 	if tmpDir == "" {
 		t.Fatalf("CreateAndReturnTempDir should always return path to tmp directory. tmpDir: %v", tmpDir)
 	}
