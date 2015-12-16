@@ -83,6 +83,11 @@ func (cli *DogestryCli) CheckHosts(hosts map[string]int, timeout time.Duration, 
 
 	if !docker {
 		service = "Dogestry"
+
+		// Do not check for running dogestry server(s) if hosts are empty
+		if len(hosts) == 0 {
+			return fmt.Errorf("Hosts empty - nothing to check")
+		}
 	}
 
 	for host, port := range hosts {
