@@ -64,6 +64,18 @@ The s3 version, with pullhosts:
 dogestry -pullhosts tcp://host-1:2375,tcp://host-2:2375,tcp://host-3:2375 s3://ops-goodies/docker-repo/ hipache
 ```
 
+### List
+
+List the images in the S3 bucket `ops-goodies`:
+```
+$ dogestry list s3://ops-goodies/
+REPOSITORY                                                    TAG
+hipache                                                       0.3.1
+hipache                                                       latest
+hipache                                                       0.2.8
+hipache                                                       0.2.4
+```
+
 ### Server Mode (Accelerator)
 Dogestry can also be run in server mode with the `-server` parameter; doing so can **dramatically** speed up image pulls when using `-pullhosts`. It also directly supports pulls from the `docker` client itself.
 
@@ -90,7 +102,7 @@ S3_URL: s3://ops-goodies
 # You can now pull via the Docker binary
 $ docker -H tcp://host-1:22375 pull opsgoodies.com/docker-repo/hipache
 ```
- 
+
 ## S3 files layout
 
 Dogestry will create two directories within your S3 bucket called "images" and "repositories". Example contents:
