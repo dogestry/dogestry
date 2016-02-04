@@ -1,2 +1,4 @@
 # Ignore the binary produced by `go build`
 dogestry
+.swp
+.swo

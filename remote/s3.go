@@ -22,7 +22,18 @@ import (
 
 const (
 	MaxGetFileAttempts int = 3
+	PushNumGoroutines      = 25
 )
+
+type putFileResult struct {
+	host string
+	err  error
+}
+
+type putConfig struct {
+	resultChan         chan putFileResult
+	putFilesChan       <-chan putFileTuple
+}
 
 func NewS3Remote(config config.Config) (*S3Remote, error) {
 	s3, err := newS3Client(config)
@@ -30,7 +41,7 @@ func NewS3Remote(config config.Config) (*S3Remote, error) {
 		return &S3Remote{}, err
 	}
 
-	udClient, err := newUploadDownlaodClient(config)
+	udClient, err := newUploadDownloadClient(config)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +66,7 @@ var (
 	S3DefaultRegion = "us-east-1"
 )
 
-func newUploadDownlaodClient(config config.Config) (*s3gof3r.S3, error) {
+func newUploadDownloadClient(config config.Config) (*s3gof3r.S3, error) {
 	s3gKeys, err := getS3gof3rKeys(config)
 	if err != nil {
 		return nil, err
@@ -129,6 +140,21 @@ func makeFilesChan(keysToPush keys) <-chan putFileTuple {
 	return putFilesChan
 }
 
+func (remote *S3Remote) pushLayers(i int, putConf putConfig) {
+	go func(i int) {
+		for putFile := range putConf.putFilesChan {
+			putFileErr := remote.putFile(putFile.KeyDef.fullPath, &putFile.KeyDef)
+
+			if (putFileErr != nil) && ((putFileErr != io.EOF) && (!strings.Contains(putFileErr.Error(), "EOF"))) {
+				putConf.resultChan <- putFileResult{putFile.Key, putFileErr}
+				return
+			}
+
+			putConf.resultChan <- putFileResult{}
+		}
+	}(i)
+}
+
 func (remote *S3Remote) Push(image, imageRoot string) error {
 	var err error
 
@@ -142,55 +168,35 @@ func (remote *S3Remote) Push(image, imageRoot string) error {
 		return nil
 	}
 
-	type putFileResult struct {
-		host string
-		err  error
+	putConf := putConfig{
+		resultChan:   make(chan putFileResult, PushNumGoroutines),
+		putFilesChan: makeFilesChan(keysToPush),
 	}
 
-	numGoroutines := 25
+	defer close(putConf.resultChan) // Pusher goroutines exit when we do this
 
-	putFileErrChan := make(chan putFileResult, numGoroutines)
-	putFilesChan := makeFilesChan(keysToPush)
-
-	defer close(putFileErrChan)
-
-	goroutineQuitChans := make([]chan bool, numGoroutines)
-	for i := 0; i < numGoroutines; i++ {
-		goroutineQuitChans[i] = make(chan bool)
-	}
-
+	// Spin up PushNumGoroutines number of uploaders
 	println("Pushing files to S3 remote:")
-	for i := 0; i < numGoroutines; i++ {
-		go func(i int) {
-			select {
-			case <-goroutineQuitChans[i]:
-				return
-			default:
-				for putFile := range putFilesChan {
-					putFileErr := remote.putFile(putFile.KeyDef.fullPath, &putFile.KeyDef)
-
-					if (putFileErr != nil) && ((putFileErr != io.EOF) && (!strings.Contains(putFileErr.Error(), "EOF"))) {
-						putFileErrChan <- putFileResult{putFile.Key, putFileErr}
-						return
-					}
-
-					putFileErrChan <- putFileResult{}
-				}
-			}
-		}(i)
+	for i := 0; i < PushNumGoroutines; i++ {
+		go remote.pushLayers(i, putConf)
 	}
 
+	// See if we had any errors, if so end immediately.
+	// This will eventually time out in the S3 library
+	// and report errors so we don't need to ourselves.
 	for i := 0; i < len(keysToPush); i++ {
-		p := <-putFileErrChan
+		p := <-putConf.resultChan
 		if p.err != nil {
-			// Close all running goroutines
-			for i := 0; i < numGoroutines; i++ {
-				goroutineQuitChans[i] <- true
-			}
-
-			log.Printf("error when uploading to S3: %v", p.err)
-			return fmt.Errorf("Error when uploading to S3: %v", p.err)
+			err = p.err
+			break
 		}
+	}
+
+	if err != nil {
+		log.Printf("error when uploading to S3: %v", err)
+		// Existing pushers will still finish here, exit on channel close
+		// which was deferred above.
+		return fmt.Errorf("Error when uploading to S3: %v", err)
 	}
 
 	return nil
