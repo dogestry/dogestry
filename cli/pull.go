@@ -53,7 +53,7 @@ func (cli *DogestryCli) CmdPull(args ...string) error {
 	}
 
 	hosts := utils.ParseHosts(cli.PullHosts)
-	checkTimeout := time.Duration(1) * time.Second
+	checkTimeout := time.Duration(10) * time.Second
 
 	// Perform docker health check (if -disable-checks is disabled (default))
 	if !cli.Config.DisableChecks {
