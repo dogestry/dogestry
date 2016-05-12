@@ -6,7 +6,7 @@ import (
 
 type ID string
 
-// stripPrefix removes hashing definition that we are not interested in here.
+// trimPrefix removes hashing definition that we are not interested in here.
 // Also makes sure as to not break backwards compatibility with older versions
 // where Docker did not specify the hash function.
 func (id ID) trimPrefix() ID {
