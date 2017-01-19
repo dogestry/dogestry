@@ -23,8 +23,8 @@ If you prefer to build it yourself, clone the repo and `godep get && godep go bu
 
 Typical S3 Usage:
 ```
-$ export AWS_ACCESS_KEY=ABC
-$ export AWS_SECRET_KEY=DEF
+$ export AWS_ACCESS_KEY_ID=ABC
+$ export AWS_SECRET_ACCESS_KEY=DEF
 $ export DOCKER_HOST=tcp://localhost:2375
 $ dogestry push s3://<bucket name>?region=us-east-1 <image name>
 $ dogestry pull s3://<bucket name>?region=us-east-1 <image name>
