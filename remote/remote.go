@@ -107,7 +107,7 @@ func ParseImagePath(path string, prefix string) (repo, tag string) {
 	return repo, tag
 }
 
-// Common implementation of walking a remote's images
+// WalkImages: Common implementation of walking a remote's images
 //
 // Starting at id, follow the ancestry tree, calling walker for each image found.
 // Walker can abort the walk by returning an error.
