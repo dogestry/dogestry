@@ -42,7 +42,7 @@ func FileHumanSize(path string) string {
 	return HumanSize(size)
 }
 
-// md5 file at path
+// Md5File: md5 file at path
 func Md5File(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -58,7 +58,7 @@ func Md5File(path string) (string, error) {
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
-// sha1 file at path
+// Sha1File: sha1 file at path
 func Sha1File(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -74,7 +74,7 @@ func Sha1File(path string) (string, error) {
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
-// Extract hostnames and ports from a list of pullhost args
+// ParseHosts: Extract hostnames and ports from a list of pullhost args
 // ie. 'tcp://some.hostname.com:2375', extract 'some.hostname.com' and '2375'
 //
 // return map[hostname]port
@@ -101,7 +101,7 @@ func ParseHosts(pullHosts []string) map[string]int {
 	return parsedHosts
 }
 
-// Check if docker (or dogestry) is running on the endpoint
+// ServerCheck checks if docker (or dogestry) is running on the endpoint
 func ServerCheck(host string, port int, timeout time.Duration, docker bool) bool {
 	url := fmt.Sprintf("http://%v:%v/version", host, port)
 
