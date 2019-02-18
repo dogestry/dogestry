@@ -310,7 +310,7 @@ type keyDef struct {
 // keys represents either local or remote files
 type keys map[string]*keyDef
 
-// gets a key, creating the underlying keyDef if required
+// Get gets a key, creating the underlying keyDef if required
 // we need to S3Remote for getting the sum, so add it here
 func (k keys) Get(key string, remote *S3Remote) *keyDef {
 	if existing, ok := k[key]; ok {
@@ -322,7 +322,7 @@ func (k keys) Get(key string, remote *S3Remote) *keyDef {
 	return k[key]
 }
 
-// Returns keys either not existing in other,
+// NotIn returns keys either not existing in other,
 // or whose sum doesn't match.
 func (k keys) NotIn(other keys) keys {
 	notIn := make(keys)

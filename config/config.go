@@ -46,7 +46,7 @@ func NewConfig(useMetaService bool, serverPort int, forceLocal, requireEnvVars, 
 	return c, nil
 }
 
-// Config instantiation when dogestry is ran in server mode
+// NewServerConfig: Config instantiation when dogestry is ran in server mode
 func NewServerConfig(authHeader string) (Config, error) {
 	c := Config{}
 

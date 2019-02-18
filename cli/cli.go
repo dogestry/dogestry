@@ -189,7 +189,7 @@ func (cli *DogestryCli) WorkDir(suffix string) (string, error) {
 	return cli.WorkDirGivenBaseDir(basedir, suffix)
 }
 
-// clean up the tempDir
+// Cleanup: clean up the tempDir
 func (cli *DogestryCli) Cleanup() {
 	if cli.TempDir != "" {
 		if err := os.RemoveAll(cli.TempDir); err != nil {
